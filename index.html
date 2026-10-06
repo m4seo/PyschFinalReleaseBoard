@@ -1,0 +1,1800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Release Board</title>
+<meta name="description" content="An interactive game about judging risk: can your gut feeling beat a simple formula at estimating re-conviction? All cases are fictional composites.">
+<style>
+/* =========================================================
+   Tokens
+   ========================================================= */
+:root {
+  --desk: #ebe5d8;
+  --desk-2: #e1d9c8;
+  --paper: #fffdf8;
+  --paper-2: #f8f3e7;
+  --manila: #ead7a8;
+  --manila-2: #dcc48d;
+  --manila-edge: #b99c5f;
+  --ink: #1e1a15;
+  --ink-2: #3f382f;
+  --ink-3: #574f43;
+  --line: #ddd3c0;
+  --line-2: #8a7f6c;
+  --stamp: #9a1f24;
+  --you: #8a4a0b;
+  --you-soft: #f3dfc1;
+  --you-mid: #a86b22;
+  --formula: #1d4b78;
+  --formula-soft: #dae6f2;
+  --good: #22613a;
+  --focus: #0a58ca;
+  --radius: 10px;
+  --shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 20px -10px rgba(60,45,20,.45);
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+  --topbar-h: 68px;
+  color-scheme: light;
+}
+
+/* =========================================================
+   Base
+   ========================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+/* --bar-h is the top bar's measured height (set in init); --topbar-h is only the fallback */
+html { -webkit-text-size-adjust: 100%; overflow-anchor: none; scroll-padding-top: calc(var(--bar-h, var(--topbar-h)) + 24px); }
+body {
+  margin: 0;
+  background: var(--desk);
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,.45), transparent 55%),
+    radial-gradient(circle at 85% 90%, rgba(120,95,50,.08), transparent 50%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+h1, h2, h3, h4 { font-family: var(--serif); line-height: 1.2; margin: 0 0 .5em; color: var(--ink); }
+h1 { font-size: clamp(2.3rem, 4.6vw, 3.6rem); letter-spacing: -.01em; }
+h2 { font-size: clamp(1.6rem, 2.8vw, 2.2rem); }
+h3 { font-size: 1.35rem; }
+h4 { font-size: 1.08rem; }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+strong { font-weight: 700; }
+a { color: var(--formula); }
+button { font: inherit; }
+[hidden] { display: none !important; }
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+[tabindex="-1"]:focus { outline: none; }
+[tabindex="-1"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+h2[tabindex="-1"], h3[tabindex="-1"], .step-title, .reveal, .case-head { scroll-margin-top: calc(var(--bar-h, var(--topbar-h)) + 20px); }
+
+.skip-link {
+  position: absolute; left: 12px; top: -60px; z-index: 100;
+  background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px;
+  text-decoration: none; font-weight: 600;
+}
+.skip-link:focus { top: 12px; background: var(--paper); color: var(--ink); }
+/* On the dark top bar (and the skip link that sits over it) the default blue ring is too dark */
+.topbar :focus-visible, .skip-link:focus-visible { outline-color: #9cc3ff; }
+
+.eyebrow {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 .5em;
+}
+.fine { font-size: .9rem; color: var(--ink-3); }
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  min-height: 48px; padding: .7em 1.4em; border-radius: 8px; cursor: pointer;
+  border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
+  font-weight: 650; font-size: 1rem; letter-spacing: .01em; text-decoration: none;
+  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+.btn:hover { background: var(--paper-2); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover { background: #3a3228; }
+.btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.btn:active:not([aria-disabled="true"]) { transform: translateY(1px); }
+.btn .arrow { font-family: var(--sans); }
+
+/* Glossary toggletip trigger */
+.term {
+  display: inline; padding: 0; margin: 0; border: 0; background: none; color: inherit;
+  font: inherit; line-height: inherit; cursor: help; text-align: inherit;
+  text-decoration: underline dotted var(--formula); text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+.term:hover { color: var(--formula); }
+.term[aria-expanded="true"] { background: var(--formula-soft); border-radius: 3px; }
+.term-q {
+  display: inline-block; font-family: var(--sans); font-size: .62em; font-weight: 700; line-height: 1;
+  vertical-align: super; margin-left: .15em; color: var(--formula);
+}
+.termtip {
+  position: absolute; z-index: 60; max-width: min(340px, calc(100vw - 32px));
+  background: var(--ink); color: #fbf7ee; border-radius: 10px; padding: 14px 44px 14px 16px;
+  box-shadow: 0 12px 30px -8px rgba(0,0,0,.5); font-family: var(--sans); font-size: .95rem; line-height: 1.5;
+}
+.termtip-title { font-weight: 700; margin: 0 0 .25em; color: #fff; }
+.termtip-body { margin: 0; }
+.termtip { padding-right: 54px; }
+.termtip-close {
+  position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; border-radius: 6px;
+  background: transparent; color: #fbf7ee; border: 1px solid rgba(255,255,255,.35); cursor: pointer; font-size: 1.1rem; line-height: 1;
+}
+.termtip-close:focus-visible { outline-color: #9cc3ff; }
+
+/* =========================================================
+   Top bar
+   ========================================================= */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(30,26,21,.97); color: #f5efe2;
+  border-bottom: 3px solid var(--manila-edge);
+}
+.topbar-inner {
+  max-width: 1280px; margin: 0 auto; min-height: var(--topbar-h);
+  display: flex; align-items: center; gap: 24px; padding: 8px 32px;
+}
+.brand { font-family: var(--serif); font-size: 1.25rem; font-weight: 700; letter-spacing: .01em; white-space: nowrap; color: #fff; }
+.brand small { display: block; font-family: var(--mono); font-size: .66rem; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: #d9cdb3; }
+.progress { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: .82rem; color: #e9dfca; white-space: nowrap; }
+.pips { display: flex; gap: 5px; }
+.pip { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #d9cdb3; }
+.pip.done { background: #d9cdb3; }
+.pip.now { background: var(--you-mid); border-color: var(--you-mid); }
+.scoreboard {
+  margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end;
+  font-size: .86rem;
+}
+.sb-title { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #d9cdb3; }
+.sb-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.08); }
+.sb-item b { font-family: var(--mono); font-size: 1rem; color: #fff; min-width: 2ch; text-align: right; }
+.sb-item.formula b { color: #bcd6f2; }
+.sb-item.you b { color: #f3c98e; }
+.sb-label { color: #e9dfca; }
+.sb-note { font-size: .78rem; color: #d9cdb3; }
+.sb-note .term { color: #e9dfca; text-decoration-color: #9cc3ff; }
+.sb-note .term-q { color: #9cc3ff; }
+.sb-note .term[aria-expanded="true"] { background: rgba(156,195,255,.22); color: #fff; }
+
+/* =========================================================
+   Layout
+   ========================================================= */
+main { max-width: 1280px; margin: 0 auto; padding: 36px 32px 64px; }
+.screen { animation: none; }
+
+/* Paper + folder */
+.sheet {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: var(--shadow); padding: 22px 26px; position: relative;
+}
+.folder {
+  background: var(--manila); border: 1px solid var(--manila-edge); border-radius: 4px 14px 14px 14px;
+  padding: 26px; position: relative; margin-top: 30px;
+  box-shadow: 0 2px 0 var(--manila-2), 0 16px 30px -18px rgba(70,50,10,.6);
+}
+.folder::before {
+  content: attr(data-tab);
+  content: attr(data-tab) / "";   /* decorative: the same words are in the heading below */
+  position: absolute; left: -1px; top: -30px; height: 30px; padding: 6px 20px 0;
+  background: var(--manila); border: 1px solid var(--manila-edge); border-bottom: 0; border-radius: 10px 10px 0 0;
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2);
+}
+.stamp {
+  display: inline-block; font-family: var(--mono); font-weight: 700; font-size: .78rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--stamp); border: 2px solid var(--stamp); border-radius: 4px;
+  padding: 3px 9px; transform: rotate(-2.5deg); background: rgba(255,253,248,.6);
+}
+
+/* =========================================================
+   Intro
+   ========================================================= */
+.intro { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 40px; align-items: start; }
+.intro-hero .lede { font-size: 1.2rem; max-width: 36em; }
+.intro-hero h1 { margin-bottom: .3em; }
+.intro-steps { list-style: none; padding: 0; margin: 28px 0; counter-reset: step; display: grid; gap: 14px; }
+.intro-steps li {
+  counter-increment: step; position: relative; padding: 14px 18px 14px 64px; margin: 0;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+}
+.intro-steps li::before {
+  content: counter(step); position: absolute; left: 16px; top: 14px; width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--ink); display: grid; place-items: center; font-family: var(--mono); font-weight: 700;
+}
+.intro-steps strong { display: block; font-family: var(--serif); font-size: 1.08rem; }
+.intro-card { margin-top: 30px; }
+.intro-card h2 { font-size: 1.3rem; }
+.intro-card ul { padding-left: 1.1em; }
+.intro-card .stamp { position: absolute; right: 18px; top: -14px; }
+.intro-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 8px; }
+
+/* =========================================================
+   Case screen
+   ========================================================= */
+.case-head { max-width: 62em; }
+.case-head h2 { margin: 0; }
+.case-eyebrow-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
+.case-eyebrow-row .eyebrow { margin: 0; }
+.case-meta { margin: .35em 0 0; color: var(--ink-2); }
+.case-meta b { font-weight: 650; }
+.case-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: 28px; align-items: start; }
+.dossier { display: grid; gap: 18px; }
+.stage-label { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 2px; }
+.stage-label h3 { margin: 0; }
+.stage-label p { margin: 0; color: var(--ink-2); font-size: .95rem; }
+.sheet h4 {
+  font-family: var(--mono); font-size: .8rem; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3);
+  border-bottom: 1px dashed var(--line-2); padding-bottom: 8px; margin-bottom: 14px; font-weight: 600;
+}
+.sheet p:last-child { margin-bottom: 0; }
+.clip {
+  position: absolute; top: -16px; right: 34px; width: 22px; height: 52px;
+  border: 3px solid #8b8f96; border-radius: 12px; border-bottom-color: transparent;
+}
+.dialogue { margin: 0; display: grid; gap: 10px; }
+.line { display: grid; grid-template-columns: 7.5em minmax(0,1fr); gap: 12px; }
+.line dt { font-family: var(--mono); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: .25em; }
+.line dd { margin: 0; font-family: var(--serif); font-size: 1.08rem; }
+.line.person dd { font-weight: 600; }
+.manner {
+  margin-top: 16px; padding: 12px 14px; background: var(--paper-2); border-left: 4px solid var(--manila-edge);
+  font-size: .97rem; border-radius: 0 6px 6px 0;
+}
+.manner b { font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 2px; }
+.lab { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 14px 20px; align-items: center; }
+.lab-reading { font-family: var(--mono); font-size: 2.2rem; font-weight: 700; line-height: 1; color: var(--ink); }
+.lab-reading small { font-size: .9rem; font-weight: 500; color: var(--ink-3); margin-left: 4px; }
+.lab p { margin: 0; }
+.heart { width: 22px; height: 22px; vertical-align: -4px; margin-right: 6px; }
+
+/* Worksheet */
+.worksheet {
+  position: sticky; top: calc(var(--bar-h, var(--topbar-h)) + 18px);
+  max-height: calc(100vh - var(--bar-h, var(--topbar-h)) - 36px); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 22px 24px;
+}
+/* Stage B: the worksheet grows (record + second slider), so it scrolls with the page instead of inside itself */
+.worksheet.unstuck { position: static; max-height: none; overflow: visible; }
+.worksheet h3 { display: flex; align-items: center; gap: 10px; }
+.question {
+  font-family: var(--serif); font-size: 1.12rem; line-height: 1.45; margin-bottom: 16px; padding: 12px 14px;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 8px;
+}
+.step + .step { margin-top: 20px; padding-top: 20px; border-top: 2px dashed var(--line); }
+.step-title { font-family: var(--mono); font-size: .8rem; line-height: 1.6; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; font-weight: 600; }
+.step-title:focus-visible { outline-offset: 4px; }
+.locked-chip {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-2);
+}
+.locked-chip .val { font-family: var(--mono); font-size: 1.3rem; font-weight: 700; color: var(--you); }
+.locked-chip .stamp { transform: rotate(-3deg); }
+.stamp.pop { animation: stamp-in .35s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes stamp-in { from { transform: scale(1.8) rotate(-12deg); opacity: 0; } to { transform: scale(1) rotate(-3deg); opacity: 1; } }
+
+/* Slider */
+.slider-block { margin-top: 4px; }
+.slider-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.slider-top label { font-weight: 650; }
+.slider-out { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--you); line-height: 1; min-width: 4ch; text-align: right; }
+.slider-out.bump { animation: bump .18s ease-out; }
+@keyframes bump { 50% { transform: scale(1.12); } }
+.is-unset .slider-out { color: var(--ink-3); }
+.slider-row { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 10px; align-items: center; margin-top: 8px; }
+.step-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--paper);
+  font-size: 1.3rem; font-weight: 700; color: var(--ink); cursor: pointer; line-height: 1;
+}
+.step-btn:hover:not(:disabled) { border-color: var(--you); color: var(--you); }
+.step-btn:disabled { opacity: .45; cursor: not-allowed; }
+input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent; cursor: pointer;
+  --val: 50%;
+}
+input[type="range"]:disabled { cursor: not-allowed; opacity: .6; }
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 12px; border-radius: 7px; border: 1px solid var(--line-2);
+  background: linear-gradient(to right, var(--you) 0, var(--you) var(--val), #efe8da var(--val), #efe8da 100%);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 30px; height: 30px; margin-top: -10px; border-radius: 50%;
+  background: var(--paper); border: 4px solid var(--you); box-shadow: 0 2px 5px rgba(0,0,0,.3);
+  transition: transform .12s ease;
+}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.12); }
+input[type="range"]::-moz-range-track { height: 12px; border-radius: 7px; border: 1px solid var(--line-2); background: #efe8da; }
+input[type="range"]::-moz-range-progress { height: 12px; border-radius: 7px 0 0 7px; background: var(--you); }
+input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--paper); border: 4px solid var(--you); box-shadow: 0 2px 5px rgba(0,0,0,.3); }
+input[type="range"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 10px; }
+.is-unset input[type="range"]::-webkit-slider-runnable-track { background: #efe8da; }
+.is-unset input[type="range"]::-webkit-slider-thumb { border-style: dashed; border-color: var(--ink-3); background: var(--paper-2); }
+.is-unset input[type="range"]::-moz-range-progress { background: transparent; }
+.is-unset input[type="range"]::-moz-range-thumb { border-style: dashed; border-color: var(--ink-3); background: var(--paper-2); }
+.slider-scale { display: flex; justify-content: space-between; margin: 2px 54px 0; font-family: var(--mono); font-size: .72rem; color: var(--ink-3); }
+.mini-wrap { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.mini-dots { display: grid; grid-template-columns: repeat(10, 9px); gap: 3px; flex: none; }
+.mini-dots span { width: 9px; height: 9px; border-radius: 2px; background: #e9e1d0; border: 1px solid #cfc4ae; transition: background-color .15s ease, border-color .15s ease; }
+.mini-dots span.on { background: var(--you); border-color: var(--you); }
+.slider-caption { margin: 0; font-size: .95rem; color: var(--ink-2); }
+.hint { font-size: .86rem; color: var(--ink-3); margin: 10px 0 0; }
+.hint.warn { color: var(--stamp); font-weight: 600; }
+.ws-actions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
+.ws-actions .btn { width: 100%; }
+
+/* Record table */
+.record-intro { font-size: .95rem; color: var(--ink-2); }
+.record {
+  width: 100%; border-collapse: collapse; font-size: .95rem; margin: 6px 0 18px;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+}
+.record caption { text-align: left; font-family: var(--mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 6px; }
+.record th, .record td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.record tr:last-child th, .record tr:last-child td { border-bottom: 0; }
+.record th { font-weight: 500; color: var(--ink-2); }
+.record td { font-family: var(--mono); font-weight: 700; white-space: nowrap; text-align: right; }
+.slide-in { animation: slide-in .4s ease-out both; }
+@keyframes slide-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* =========================================================
+   Reveal
+   ========================================================= */
+.reveal { margin-top: 28px; padding: 28px 30px; }
+.reveal > .eyebrow { color: var(--stamp); }
+.reveal-grid { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.3fr); gap: 34px; align-items: start; margin-top: 8px; }
+.big-stat { font-family: var(--serif); font-size: 1.35rem; line-height: 1.35; margin-bottom: 16px; }
+.big-stat strong { font-family: var(--mono); font-size: 1.6em; color: var(--ink); }
+.dots { width: 100%; max-width: 300px; height: auto; display: block; }
+.dots circle { fill: var(--paper); stroke: #8a7f6c; stroke-width: 1.4; }
+.dots circle.on { fill: var(--ink); stroke: var(--ink); }
+.legend { list-style: none; padding: 0; margin: 12px 0 10px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .9rem; }
+.legend li { display: flex; align-items: center; gap: 8px; margin: 0; }
+.key { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #8a7f6c; background: var(--paper); flex: none; }
+.key.filled { background: var(--ink); border-color: var(--ink); }
+.compare h4 {
+  font-family: var(--mono); font-size: .8rem; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 12px; font-weight: 600;
+}
+.scale { display: grid; gap: 14px; margin-bottom: 26px; }
+.scale-row { display: grid; grid-template-columns: 11.5em minmax(0,1fr) 9.5em; gap: 14px; align-items: center; }
+.scale-name { font-weight: 600; font-size: .95rem; line-height: 1.25; }
+.scale-track { position: relative; height: 26px; }
+.scale-track::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 2px; background: var(--line-2); }
+.scale-inner { position: absolute; inset: 0 11px; }
+.scale-outcome { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 2px dashed var(--ink); }
+.scale-mark { position: absolute; top: 2px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; }
+.scale-mark.first { border: 3px solid var(--you); background: var(--paper); }
+.scale-mark.final { background: var(--you); border: 3px solid var(--you); }
+.scale-mark.formula { background: var(--formula); border-radius: 3px; width: 18px; height: 18px; margin-left: -9px; top: 4px; transform: rotate(45deg); }
+.scale-val { font-family: var(--mono); font-size: .9rem; line-height: 1.3; }
+.scale-val b { font-size: 1.05rem; }
+.scale-val span { display: block; color: var(--ink-3); }
+.scale-val.best span { color: var(--good); font-weight: 700; }
+.scale-axis { display: grid; grid-template-columns: 11.5em minmax(0,1fr) 9.5em; gap: 14px; }
+.axis { position: relative; height: 18px; margin: 0 11px; font-family: var(--mono); font-size: .72rem; color: var(--ink-3); }
+.axis span { position: absolute; transform: translateX(-50%); }
+.axis-note { font-size: .86rem; color: var(--ink-2); margin: -6px 0 22px; }
+.breakdown { width: 100%; border-collapse: collapse; font-size: .93rem; }
+.breakdown th, .breakdown td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.breakdown thead th { font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.breakdown td.num, .breakdown th.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+.breakdown th.wrap { white-space: normal; }
+.breakdown tfoot td, .breakdown tfoot th { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--ink); }
+.lookup-line { margin: 10px 0 0; font-size: .95rem; }
+.lookup-line b { font-family: var(--mono); color: var(--formula); }
+.tag { display: inline-block; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; border: 1px solid var(--ink-3); color: var(--ink-3); border-radius: 3px; padding: 1px 6px; vertical-align: 2px; }
+.takeaway { margin-top: 26px; padding: 16px 18px; background: var(--paper-2); border: 1px solid var(--line); border-left: 5px solid var(--formula); border-radius: 0 8px 8px 0; }
+.takeaway h4 { font-family: var(--mono); font-size: .8rem; letter-spacing: .13em; text-transform: uppercase; color: var(--formula); margin-bottom: 6px; }
+.reveal-actions { margin-top: 24px; display: flex; justify-content: flex-end; }
+
+/* 100-dot fill animation (only when motion is OK) */
+@media (prefers-reduced-motion: no-preference) {
+  .dots.animate circle { transition: fill .25s ease, stroke .25s ease; transition-delay: calc(var(--i) * 14ms); }
+  .slide-in-sheet { animation: slide-in .45s ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important; }
+}
+
+/* =========================================================
+   Debrief
+   ========================================================= */
+.debrief { display: grid; grid-template-columns: minmax(0, 1fr); gap: 30px; }
+.debrief-head { max-width: 50em; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
+.tile { padding: 20px 22px; }
+.tile .label { font-family: var(--mono); font-size: .76rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px; }
+.tile .num { font-family: var(--mono); font-size: 2.8rem; font-weight: 700; line-height: 1; margin: 0; }
+.tile .unit { margin: 6px 0 0; color: var(--ink-2); font-size: .95rem; }
+.tile.you .num { color: var(--you); }
+.tile.formula .num { color: var(--formula); }
+.tile.formula { border-top: 5px solid var(--formula); }
+.tile.you { border-top: 5px solid var(--you); }
+.verdict { font-family: var(--serif); font-size: 1.2rem; line-height: 1.5; max-width: 46em; margin: 0; }
+.panel { padding: 26px 30px; }
+.panel > h3 { font-size: 1.5rem; }
+.prose { max-width: 46em; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.cases-table { width: 100%; border-collapse: collapse; font-size: .95rem; min-width: 560px; background: var(--paper); }
+.cases-table th, .cases-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.cases-table th:first-child, .cases-table td:first-child { text-align: left; white-space: normal; }
+.cases-table thead th { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); background: var(--paper-2); font-weight: 600; }
+.cases-table td { font-family: var(--mono); }
+.cases-table tbody th { font-weight: 400; }
+.cases-table td small { color: var(--ink-3); }
+.cases-table tfoot td, .cases-table tfoot th { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; }
+
+/* Lean chart */
+.seg { border: 0; padding: 0; margin: 0 0 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.seg legend { float: left; margin-right: 6px; font-weight: 650; padding: 0; }
+.seg label {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; min-height: 44px; border: 2px solid var(--line-2);
+  border-radius: 999px; cursor: pointer; background: var(--paper);
+}
+.seg input { width: 18px; height: 18px; accent-color: var(--you); margin: 0; }
+.seg label:has(input:checked) { border-color: var(--you); background: var(--you-soft); }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.lean-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 14px; padding: 0; list-style: none; font-size: .92rem; }
+.lean-legend li { display: flex; align-items: center; gap: 8px; margin: 0; }
+.swatch { width: 26px; height: 12px; border-radius: 3px; flex: none; }
+.swatch.you { background: var(--you-mid); border: 1px solid var(--you); }
+.swatch.out { background: var(--ink-2); }
+.lean-group + .lean-group { margin-top: 22px; }
+.lean-group h4 { font-family: var(--mono); font-size: .78rem; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; font-weight: 600; border-bottom: 1px dashed var(--line-2); padding-bottom: 6px; }
+.lean-row { display: grid; grid-template-columns: 15em minmax(0,1fr); gap: 6px 18px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.lean-row:last-child { border-bottom: 0; }
+.flag-tag { display: inline-block; margin-left: 8px; font-family: var(--mono); font-size: .66rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--stamp); border: 1.5px solid var(--stamp); border-radius: 3px; padding: 0 5px; vertical-align: 2px; }
+.flag-tag.missed { color: var(--formula); border-color: var(--formula); }
+.lean-name { font-weight: 600; line-height: 1.3; }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 6.5em minmax(60px, 1fr) 15.5em; gap: 10px; align-items: center; font-size: .86rem; }
+.bar-who { color: var(--ink-2); }
+.bar-track { height: 14px; background: #eee6d6; border-radius: 4px; position: relative; overflow: hidden; border: 1px solid #d5cab4; }
+.bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px 0 0 3px; width: 0; }
+.bar.you .bar-fill { background: var(--you-mid); }
+.bar.out .bar-fill { background: var(--ink-2); }
+@media (prefers-reduced-motion: no-preference) { .bar-fill { transition: width .6s ease; } }
+.bar-text { font-family: var(--mono); font-size: .8rem; color: var(--ink-2); line-height: 1.25; }
+.bar-text b { color: var(--ink); }
+.callouts { margin: 20px 0 0; padding: 16px 18px; background: var(--paper-2); border-radius: 8px; border: 1px solid var(--line); }
+.callouts p:last-child { margin: 0; }
+.anchor-viz { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; margin: 16px 0 18px; max-width: 46em; }
+.anchor-stat { padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-2); }
+.anchor-stat .num { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--you); line-height: 1; }
+.anchor-stat p { margin: 6px 0 0; font-size: .93rem; color: var(--ink-2); }
+.gap-bar { height: 16px; background: #eee6d6; border: 1px solid #d5cab4; border-radius: 4px; position: relative; overflow: hidden; max-width: 46em; }
+.gap-bar span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--you-mid); }
+.research p, .care p { max-width: 46em; }
+.research h4 {
+  font-family: var(--serif); font-size: 1.15rem; font-weight: 700; margin: 1.3em 0 .4em; text-transform: none;
+  letter-spacing: 0; color: var(--ink); border-bottom: 0; padding-bottom: 0;
+}
+.limits-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.limits-list li { margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-2); }
+.limits-list b { display: block; font-family: var(--serif); font-size: 1.05rem; margin-bottom: 4px; }
+details.model { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-2); }
+details.model summary { cursor: pointer; padding: 12px 16px; font-weight: 650; min-height: 44px; }
+details.model .model-body { padding: 0 16px 16px; }
+.model-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; }
+.again { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
+footer.site { max-width: 1280px; margin: 0 auto; padding: 0 32px 40px; font-size: .86rem; color: var(--ink-3); }
+footer.site p { max-width: 60em; }
+
+/* =========================================================
+   Responsive layer (desktop layout above is unchanged)
+   ========================================================= */
+@media (max-width: 1100px) {
+  .topbar-inner { padding: 8px 20px; gap: 16px; }
+  main { padding: 28px 20px 56px; }
+  .brand small { display: none; }   /* keeps the bar to two rows on tablets */
+  .sb-note { flex-basis: 100%; text-align: right; font-size: .74rem; line-height: 1.2; }
+  .scale-row, .scale-axis { grid-template-columns: 9.5em minmax(0,1fr) 8.5em; }
+  .bar { grid-template-columns: 6em minmax(60px,1fr) 13em; }
+}
+@media (max-width: 900px) {
+  :root { --topbar-h: 58px; }
+  .intro { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .case-grid { grid-template-columns: minmax(0, 1fr); }
+  .worksheet { position: static; max-height: none; overflow: visible; }
+  .reveal-grid { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .tiles { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .limits-list { grid-template-columns: minmax(0, 1fr); }
+  .model-cols { grid-template-columns: minmax(0, 1fr); }
+  .lean-row { grid-template-columns: minmax(0, 1fr); }
+  .progress .pips { display: none; }
+}
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  :root { --topbar-h: 54px; }
+  .topbar-inner { padding: 6px 16px; gap: 10px; flex-wrap: wrap; }
+  .brand { font-size: 1.05rem; }
+  .brand small { display: none; }
+  .scoreboard { gap: 6px; margin-left: auto; }
+  .sb-title { display: none; }
+  .sb-item { padding: 3px 8px; gap: 4px; font-size: .78rem; }
+  .sb-item b { font-size: .9rem; }
+  .sb-label .long { display: none; }
+  main { padding: 20px 16px 48px; }
+  footer.site { padding: 0 16px 32px; }
+  .sheet { padding: 18px 16px; }
+  .folder { padding: 14px; }
+  .folder::before { font-size: .7rem; padding: 7px 12px 0; }
+  .worksheet { padding: 18px 16px; }
+  .line { grid-template-columns: 1fr; gap: 0; }
+  .lab { grid-template-columns: 1fr; gap: 8px; }
+  .reveal { padding: 20px 16px; }
+  .panel { padding: 20px 16px; }
+  .big-stat { font-size: 1.15rem; }
+  .scale-row { grid-template-columns: minmax(0,1fr) auto; grid-template-areas: "name val" "track track"; gap: 4px 10px; }
+  .scale-name { grid-area: name; }
+  .scale-val { grid-area: val; text-align: right; }
+  .scale-val span { display: inline; }
+  .scale-val span::before { content: " · "; }
+  .scale-track { grid-area: track; }
+  .scale-axis { grid-template-columns: 1fr; }
+  .scale-axis > span { display: none; }
+  .bar { grid-template-columns: 4.6em minmax(0,1fr); }
+  .bar-text { grid-column: 1 / -1; padding-left: calc(4.6em + 10px); margin-top: -2px; }
+  .anchor-viz { grid-template-columns: 1fr; }
+  .tile .num { font-size: 2.3rem; }
+  .intro-steps li { padding-left: 58px; }
+  .termtip { position: fixed; left: 16px !important; right: 16px; top: auto !important; bottom: 16px; max-width: none; }
+  .breakdown { font-size: .88rem; }
+  .breakdown th, .breakdown td { padding: 7px 6px; }
+}
+@media (max-width: 380px) {
+  .sb-item { padding: 3px 6px; }
+  .step-btn { width: 40px; height: 40px; }
+  .slider-row { grid-template-columns: 40px minmax(0,1fr) 40px; }
+  .slider-scale { margin: 2px 50px 0; }
+}
+@media print {
+  .topbar, .reveal-actions, .again, .skip-link { display: none !important; }
+  body { background: #fff; }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">The Release Board<small>Fictional composites · teaching game</small></div>
+    <div class="progress" id="progress" hidden>
+      <span id="progress-text">Case 1 of 4</span>
+      <span class="pips" id="pips" aria-hidden="true"></span>
+    </div>
+    <div class="scoreboard" id="scoreboard" hidden>
+      <span class="sb-title" id="sb-title">You vs. the formula</span>
+      <span class="sb-item you"><span class="sb-label">1st<span class="long"> look</span></span> <b id="sb-first">–</b></span>
+      <span class="sb-item you"><span class="sb-label">Final</span> <b id="sb-final">–</b></span>
+      <span class="sb-item formula"><span class="sb-label">Formula</span> <b id="sb-formula">–</b></span>
+      <span class="sb-note" id="sb-note"></span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <noscript><p class="sheet">This game needs JavaScript turned on in your browser.</p></noscript>
+  <h1 class="sr-only" id="game-h1" hidden>The Release Board</h1>
+
+  <!-- ============ INTRO ============ -->
+  <section class="screen" id="screen-intro" aria-labelledby="intro-title">
+    <div class="intro">
+      <div class="intro-hero">
+        <p class="eyebrow">An interactive case game about judging risk</p>
+        <h1 id="intro-title" tabindex="-1">The Release Board</h1>
+        <p class="lede" id="intro-lede"></p>
+        <ol class="intro-steps" id="intro-steps"></ol>
+        <div class="intro-actions">
+          <button class="btn primary" id="start-btn" type="button">Take your seat on the board <span class="arrow" aria-hidden="true">→</span></button>
+          <span class="fine" id="intro-fine">About 6–8 minutes · all four cases are fictional composites</span>
+        </div>
+      </div>
+      <section class="folder intro-card" data-tab="Before you start" aria-labelledby="before-title">
+        <div class="sheet">
+          <span class="stamp" aria-hidden="true">Composites</span>
+          <h2 id="before-title">Before you start</h2>
+          <ul id="intro-notes"></ul>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============ CASE ============ -->
+  <section class="screen" id="screen-case" aria-labelledby="case-title" hidden>
+    <div class="case-head">
+      <div class="case-eyebrow-row">
+        <p class="eyebrow" id="case-eyebrow">Case 1 of 4</p>
+        <span class="stamp">Fictional composite · not a real person</span>
+      </div>
+      <h2 id="case-title" tabindex="-1">Case file</h2>
+      <p class="case-meta" id="case-meta"></p>
+    </div>
+
+    <div class="case-grid">
+      <div class="folder" data-tab="Stage A · The file" id="folder">
+        <article class="dossier" id="dossier" aria-labelledby="file-title"></article>
+      </div>
+      <section class="worksheet" id="worksheet" aria-labelledby="ws-title"></section>
+    </div>
+
+    <section class="sheet reveal" id="reveal" aria-labelledby="reveal-title" hidden></section>
+  </section>
+
+  <!-- ============ DEBRIEF ============ -->
+  <section class="screen" id="screen-debrief" aria-labelledby="debrief-title" hidden>
+    <div class="debrief" id="debrief"></div>
+  </section>
+</main>
+
+<footer class="site">
+  <p id="footer-text">An educational project for a psychology course on psychology and criminal behavior. Every case is a fictional composite. The “Record Score” is a simplified teaching model inspired by the Static-99R, a real risk checklist. It is not the real tool and must never be used to make decisions about real people.</p>
+</footer>
+
+<div class="termtip" id="termtip" hidden>
+  <p class="termtip-title" id="termtip-title"></p>
+  <p class="termtip-body" id="termtip-body"></p>
+  <button class="termtip-close" id="termtip-close" type="button" aria-label="Close explanation">✕</button>
+</div>
+<div class="sr-only" id="sr-status" aria-live="polite" aria-atomic="true"></div>
+<div class="sr-only" id="sr-term" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   GAME DATA: everything you might want to edit lives in this object.
+   ---------------------------------------------------------------------
+   Text fields may contain glossary links written as {{term-key|shown text}}.
+   The term-key must exist in GAME_DATA.glossary.
+   ===================================================================== */
+const GAME_DATA = {
+
+  /* ------------------------------------------------------------------
+     Plain-language glossary. Shown as tap/click/keyboard "What's this?"
+     explanations wherever a {{key|text}} link appears.
+     ------------------------------------------------------------------ */
+  glossary: {
+    'release-board': ['Release board', 'A group of officials who decide whether a person in prison can leave early, usually under supervision. Also called a parole board.'],
+    'parole': ['Parole', 'Being released from prison before the full sentence is over, while following rules and checking in with an officer.'],
+    'reconvicted': ['Re-convicted', 'Found guilty in court of a new crime after being released. This game uses it as the measure of reoffending.'],
+    'recidivism': ['Recidivism', 'Committing another crime after being punished for an earlier one. Researchers often measure it as being re-convicted within a set time, like 5 years.'],
+    'composite': ['Fictional composite', 'A made-up person built by combining typical details from research. Not a real person, case, or record.'],
+    'static-factor': ['Static factor', 'A fact about someone’s past that can’t change, like their age at release or how many times they were sentenced before.'],
+    'dynamic-factor': ['Dynamic factor', 'Something about a person that can change over time, like drug use, having a job, or having support from family.'],
+    'sentencing-date': ['Sentencing date', 'A day when a court gave someone a punishment. If several crimes were punished on the same day, that counts as one sentencing date.'],
+    'resting-hr': ['Resting heart rate', 'How many times the heart beats in one minute while a person sits calmly. For most adults it is somewhere between 60 and 100.'],
+    'psychophysiology': ['Psychophysiology', 'The study of how body signals, like heart rate or sweating, connect to thoughts, feelings, and behavior.'],
+    'antisocial': ['Antisocial behavior', 'Behavior that harms other people or breaks important rules, like aggression, fighting, or crime. (It does not mean “unfriendly.”)'],
+    'actuarial': ['Actuarial prediction', 'Prediction by formula. A few facts are scored the same way every time, and the total is matched to how often people with that score had the outcome in the past. Car insurance prices work the same way.'],
+    'clinical-judgment': ['Clinical judgment', 'A prediction an expert, like a psychologist, makes using their own experience and impressions, instead of a fixed formula.'],
+    'formula': ['The formula', 'A simple scoring rule: add points for a few facts from the record, then look up the total in a table. It treats every case exactly the same way.'],
+    'base-rate': ['Base rate', 'How often something happens in a whole group. If 20 out of 100 similar people were re-convicted, the base rate for that group is 20%.'],
+    'probability': ['Probability', 'A number from 0% to 100% that says how likely something is. 25% means about 25 times out of 100.'],
+    'points-off': ['Points off', 'How far an estimate was from the outcome, ignoring whether it was too high or too low. Saying 30 when the answer was 20 is 10 points off. Lower is better.'],
+    'correlation': ['Correlation', 'How closely two things rise and fall together. 0 means no link at all; 1 means a perfect link. Here we show only the strength, and say the direction in words.'],
+    'anchoring': ['Anchoring', 'The habit of staying close to the first number you thought of, even after you get new information.'],
+    'meta-analysis': ['Meta-analysis', 'A study that pools the results of many earlier studies to find the overall pattern. Because it combines many studies, it usually gives a more trustworthy answer than one study alone.'],
+    'static99r': ['Static-99R', 'A real, widely used risk tool for adult men convicted of sexual offenses. It scores 10 facts from the record. This game uses a simplified, made-up version for teaching only.'],
+    'calibration': ['Calibration', 'Whether a tool’s percentages match what really happens. If a well-calibrated tool says “30 out of 100” for a group, then about 30 out of every 100 people in that group really are re-convicted.'],
+    'false-positive': ['False positive', 'When someone is labeled “high risk” but does not go on to reoffend.'],
+    'risk-tool': ['Risk assessment tool', 'A standard checklist or formula that estimates how often people with similar records commit another crime. It describes a group, not what one person will do.'],
+    'probation': ['Probation', 'A sentence served in the community instead of prison, under supervision and with set rules.'],
+    'illustrative': ['Illustrative', 'Made up to show how the idea works, based on patterns in real research. It is not a measured number about real people.'],
+    'peer-reviewed': ['Peer-reviewed', 'Checked by other experts in the field before being published in a journal.'],
+    'lookup-table': ['Lookup table', 'The formula’s chart that matches each total score to a rate out of 100. You can see the whole chart in the board report at the end.']
+  },
+
+  /* ------------------------------------------------------------------
+     THE "RECORD SCORE": a simplified, transparent TEACHING MODEL
+     inspired by the Static-99R. It is NOT the real Static-99R and must
+     never be used for real decisions.
+
+     Items follow the spirit of Static-99/Static-99R items, rewritten for
+     general (any-offense) re-conviction. Item list checked against
+     Hanson & Thornton (2000), Law and Human Behavior 24(1), Appendix I
+     ("Coding Rules for Static-99", pp. 133-135). The real tool's
+     sex-offense-specific items (prior sex offenses, non-contact offenses,
+     unrelated / stranger / male victims) are left out.
+       - Age at release: Static-99 gives +1 only for age 18-24.99. The
+         Static-99R revision changed only this item, to 18-34.9 = +1,
+         35-39.9 = 0, 40-59.9 = -1, 60+ = -3; those weights are used here.
+         (Revision described by Helmus, Thornton, Hanson & Babchishin, 2012,
+         Sexual Abuse 24(1), 64-101 - abstract confirmed; exact weights were
+         checked in the authors' Public Safety Canada report 2011-01 and the
+         Static-99R coding form, not in the journal PDF.)
+       - Ever lived with a lover/partner for at least 2 years: No = +1
+         (Static-99 item 10, "Single").
+       - Violence in the current offense (Static-99 item 4, index nonsexual violence).
+       - Any earlier conviction for violence (Static-99 item 5, prior nonsexual violence).
+       - Earlier sentencing dates: Static-99 item 2 scores "4 or more" as +1.
+         Here the count is scaled 0-3 so criminal history carries more
+         weight, as it does for general re-conviction.
+         // APPROXIMATE, illustrative (our own weighting)
+
+     SCORE -> 5-YEAR RE-CONVICTION TABLE: see comment on `table` below.
+     ------------------------------------------------------------------ */
+  model: {
+    name: 'Record Score',
+    items: [
+      { field: 'ageAtRelease', label: 'Age at release', type: 'bands',
+        bands: [ { min: 18, max: 34, points: 1, text: '18–34' }, { min: 35, max: 39, points: 0, text: '35–39' },
+                 { min: 40, max: 59, points: -1, text: '40–59' }, { min: 60, max: 120, points: -3, text: '60 or older' } ] },
+      { field: 'livedWithPartner2y', label: 'Ever lived with a romantic partner for 2+ years', type: 'bool', ifYes: 0, ifNo: 1 },
+      { field: 'currentViolence', label: 'Current offense involved violence', type: 'bool', ifYes: 1, ifNo: 0 },
+      { field: 'priorViolence', label: 'Any earlier conviction for violence', type: 'bool', ifYes: 1, ifNo: 0 },
+      { field: 'priorSentencingDates', label: 'Earlier sentencing dates', type: 'bands',
+        bands: [ { min: 0, max: 0, points: 0, text: 'none' }, { min: 1, max: 2, points: 1, text: '1–2' },
+                 { min: 3, max: 3, points: 2, text: '3' }, { min: 4, max: 999, points: 3, text: '4 or more' } ] }
+    ],
+    /* Score -> "out of 100, about how many re-convicted within 5 years".
+       Must stay monotonic. Shown in the UI with an "Illustrative" tag.
+
+       Published figures that informed it: Hanson & Thornton (2000), Law and
+       Human Behavior 24(1), Table 5 (p. 129). Observed 5-year VIOLENT
+       (including sexual) recidivism by Static-99 score, 3 samples combined,
+       n = 1,086, outcome = new conviction:
+           0 = .06   1 = .11   2 = .17   3 = .22   4 = .36   5 = .42   6+ = .44
+       (5-year SEXUAL recidivism in the same table: .05 .06 .09 .12 .26 .33 .39)
+
+       The same article's text (p. 128) gives 46% at 5 years (violent, including
+       sexual) for a Static-99 score of exactly 6.
+
+       Scores 0-5 below copy the Table 5 violent figures and score 6 uses the
+       p. 128 figure. Score 7 (the highest possible score here) and scores
+       below 0 (possible only because of the Static-99R-style age item) are our
+       own extensions. Caveat: our items are not Static-99's, and our outcome is
+       ANY new conviction, which usually has a higher base rate than violent
+       convictions alone - so this whole table is a teaching approximation. */
+    table: [
+      { score: -3, percent: 3 },   // APPROXIMATE, illustrative
+      { score: -2, percent: 4 },   // APPROXIMATE, illustrative
+      { score: -1, percent: 5 },   // APPROXIMATE, illustrative
+      { score: 0, percent: 6 },    // Hanson & Thornton (2000) Table 5: score 0, 5-yr violent = .06
+      { score: 1, percent: 11 },   // Hanson & Thornton (2000) Table 5: score 1, 5-yr violent = .11
+      { score: 2, percent: 17 },   // Hanson & Thornton (2000) Table 5: score 2, 5-yr violent = .17
+      { score: 3, percent: 22 },   // Hanson & Thornton (2000) Table 5: score 3, 5-yr violent = .22
+      { score: 4, percent: 36 },   // Hanson & Thornton (2000) Table 5: score 4, 5-yr violent = .36
+      { score: 5, percent: 42 },   // Hanson & Thornton (2000) Table 5: score 5, 5-yr violent = .42
+      { score: 6, percent: 46 },   // Hanson & Thornton (2000) p. 128: score of 6, 5-yr violent = 46%
+      { score: 7, percent: 54 }    // APPROXIMATE, illustrative (highest possible score here)
+    ]
+  },
+
+  /* ------------------------------------------------------------------
+     CASES: four fictional composites. No real people, names, or records.
+     They form a 2 x 2: demeanor (tearful and admitting vs. cool and denying)
+     crossed with risk (higher vs. lower), so the interview cues carry no
+     signal about the outcome:
+                          higher risk      lower risk
+        tearful, admits   R (trap 1)       L
+        cool, denies      C                M (trap 2)
+     First-play order L, C, R, M: the gut is "right" on the first two and
+     "wrong" on the last two. Play again shuffles the order.
+     `vivid` codes describe what the file shows (set by the case author):
+        remorse 1-5 (1 = none shown, 5 = intense), admission 0-2
+        (0 = denies, 1 = partly admits / blames others, 2 = fully admits),
+        distress 1-5 (visible upset during the interview).
+     `outcome`: illustrative "out of 100 people with this profile, about N
+        were re-convicted within 5 years". Built to sit close to (not
+        exactly on) the formula, because real tools are imperfect.
+
+     VERIFIED PROPERTIES OF THIS DATA (Pearson r across the 4 cases,
+     recomputed by checkData() below; run with #debug in the URL):
+        outcome vs remorse          r = -0.04   (no link, by design)
+        outcome vs admission        r = -0.04   (no link)
+        outcome vs distress         r = +0.06   (no link)
+        outcome vs resting HR       r = -0.20   (weak; lower HR goes with a slightly higher rate)
+        resting HR vs remorse / admission / distress   r = +0.13 / +0.13 / -0.06
+          (kept low so the debrief can tell "leaned on heart rate" apart from
+           "leaned on the interview")
+        outcome vs age at release   r = -0.96
+        outcome vs never lived w/ partner 2y   r = +0.96
+        outcome vs current violence r = +0.96
+        outcome vs earlier violence r = +0.96
+        outcome vs earlier sentencing dates (count) r = +0.95
+        outcome vs Record Score     r = +0.99
+        formula average error = 2.25 points (never more than 4 off)
+     With only 4 cases, the three record yes/no facts (never lived with a
+     partner, current violence, earlier violence) follow the same pattern, so
+     they show the same correlation.
+     Trap 1 = case R (tearful, remorseful, admits; high score).
+     Trap 2 = case M (cold, denies, flat; low score).
+     ------------------------------------------------------------------ */
+  cases: [
+    {
+      id: 'L', label: '“L.”', gender: 'Woman',
+      offense: 'Impaired driving. Drove after drinking and crashed into a fence. No one was hurt.',
+      file: {
+        interview: [
+          ['Board', 'Tell us about the crash.'],
+          ['L.', 'I was drunk and I drove. A child could have been on that sidewalk.'],
+          ['Board', 'What will be different if you are released?'],
+          ['L.', 'Honestly, I don’t trust myself. I’m scared of letting my family down.']
+        ],
+        manner: 'Cried through most of the interview. Apologized several times. Said she feels “ashamed every single day.”',
+        home: 'Her husband has visited every week and wants her home. Two teenage children. Plans to start an alcohol treatment program she can attend while living at home.',
+        background: 'Grew up with a father who drank heavily. Worked as a dental assistant for twelve years.',
+        trauma: 'Her younger sister died of an illness two years before the crash. She says her drinking got much worse after that.',
+        clinic: { restingHR: 72 }
+      },
+      vivid: { remorse: 5, admission: 2, distress: 4 },
+      record: { ageAtRelease: 38, livedWithPartner2y: true, currentViolence: false, priorViolence: false, priorSentencingDates: 2 },
+      outcome: 14,
+      takeaway: 'Her tears and her fear can make her seem either very safe or very fragile. The record shows someone in her late 30s with a short history and no violence, a profile with a fairly low rate.'
+    },
+    {
+      id: 'C', label: '“C.”', gender: 'Man',
+      offense: 'Robbery. Took a phone and wallet from a man on the street and pushed him to the ground. The man had bruises and a sprained wrist.',
+      file: {
+        interview: [
+          ['Board', 'Tell us about the night of the robbery.'],
+          ['C.', 'I wasn’t part of it. I was walking with my cousin when it happened.'],
+          ['Board', 'How do you feel about the man who was hurt?'],
+          ['C.', 'I don’t know him. That’s between him and whoever pushed him.']
+        ],
+        manner: 'Calm and polite. Gave short answers and kept steady eye contact. Showed no visible emotion.',
+        home: 'Plans to live with his mother and younger sister. Has a girlfriend he has dated on and off. His cousin still lives nearby.',
+        background: 'Grew up with his mother and younger sister. Did well in math in middle school, then stopped going to school. Has worked short-term jobs at a warehouse and a car wash.',
+        trauma: 'Says his father was in and out of his life. Was badly bullied in middle school and changed schools twice. Says he “doesn’t really think about it.”',
+        clinic: { restingHR: 65 }
+      },
+      vivid: { remorse: 1, admission: 0, distress: 1 },
+      record: { ageAtRelease: 22, livedWithPartner2y: false, currentViolence: true, priorViolence: true, priorSentencingDates: 5 },
+      outcome: 55,
+      takeaway: 'His coolness and his denial look like warning signs, and here the gut guess and the record happen to agree. The record is what counts: young, never lived with a partner, violence now and before, and five earlier sentencing dates add up to the highest score in this game.'
+    },
+    {
+      id: 'R', label: '“R.”', gender: 'Man',
+      offense: 'Assault. Hit a man during a fight outside a bar. The man was badly hurt and spent a night in the hospital.',
+      file: {
+        interview: [
+          ['Board', 'What do you want to tell us about what happened?'],
+          ['R.', 'I did it, and there’s no excuse. I think about him every single day.'],
+          ['Board', 'What would you do differently?'],
+          ['R.', 'Walk away. I’ve written him three letters just to say I’m sorry.']
+        ],
+        manner: 'Cried twice during the interview. His hands shook. Apologized to the board “for taking up your time.”',
+        home: 'Has a 4-year-old daughter he hopes to see every weekend. Plans to live with his grandmother, who raised him. An uncle has offered him a job at an auto repair shop.',
+        background: 'Raised mostly by his grandmother. Played football in high school. Teachers described him as friendly and well liked.',
+        trauma: 'His older brother died in a car accident when he was a teenager. He says he started drinking heavily after that.',
+        clinic: { restingHR: 56 }
+      },
+      vivid: { remorse: 5, admission: 2, distress: 5 },
+      record: { ageAtRelease: 26, livedWithPartner2y: false, currentViolence: true, priorViolence: true, priorSentencingDates: 3 },
+      outcome: 42,
+      takeaway: 'The remorse looked real, and it may well be, but feeling sorry is not the same as being in a lower-risk group. Being young, earlier violence, and three earlier sentencing dates put people with this profile among the higher rates in this game.'
+    },
+    {
+      id: 'M', label: '“M.”', gender: 'Woman',
+      offense: 'Fraud. Over three years, about $80,000 was moved from her employer into accounts she controlled, using fake invoices (bills for work that was never done).',
+      file: {
+        interview: [
+          ['Board', 'The court found that you took money from your employer. What would you like to say?'],
+          ['M.', 'The books were a mess before I ever got there. I won’t apologize for something I didn’t do.'],
+          ['Board', 'Is there anything you regret?'],
+          ['M.', 'Trusting the people I worked for.']
+        ],
+        manner: 'Flat and cool. Little eye contact. Answered in as few words as possible and showed no visible emotion.',
+        home: 'Her husband plans for her to return home. An adult daughter lives nearby but has not visited.',
+        background: 'The oldest of five children; helped raise her younger siblings. Worked in bookkeeping for most of her career.',
+        trauma: 'Reports none. Declined to talk about her childhood.',
+        clinic: { restingHR: 60 }
+      },
+      vivid: { remorse: 1, admission: 0, distress: 1 },
+      record: { ageAtRelease: 52, livedWithPartner2y: true, currentViolence: false, priorViolence: false, priorSentencingDates: 0 },
+      outcome: 4,
+      takeaway: 'The coldness and the denial can feel like red flags. But with no earlier record, no violence, and an age in her 50s, people with this profile have the lowest rate in this game.'
+    }
+  ],
+
+  /* ------------------------------------------------------------------
+     Factors used in the debrief "What you leaned on" analysis.
+     `phrase` is used inside sentences; `label` is the row heading.
+     ------------------------------------------------------------------ */
+  analysisFactors: [
+    { key: 'remorse', group: 'file', label: 'Remorse shown', phrase: 'how much remorse they showed', path: 'vivid.remorse', more: 'more remorse' },
+    { key: 'admission', group: 'file', label: 'Admitted the offense', phrase: 'how fully they admitted the offense', path: 'vivid.admission', more: 'a fuller admission' },
+    { key: 'distress', group: 'file', label: 'Visible distress', phrase: 'how upset they seemed', path: 'vivid.distress', more: 'more distress' },
+    { key: 'restingHR', group: 'file', label: 'Resting heart rate', phrase: 'resting heart rate', path: 'file.clinic.restingHR', more: 'a higher heart rate' },
+    { key: 'age', group: 'record', label: 'Age at release', phrase: 'age at release', path: 'record.ageAtRelease', more: 'older age' },
+    { key: 'neverPartner', group: 'record', label: 'Never lived with a partner 2+ years', phrase: 'never having lived with a partner', path: 'record.livedWithPartner2y', invert: true, more: 'never living with a partner' },
+    { key: 'currentViolence', group: 'record', label: 'Violence in current offense', phrase: 'violence in the current offense', path: 'record.currentViolence', more: 'violence now' },
+    { key: 'priorViolence', group: 'record', label: 'Earlier violence conviction', phrase: 'an earlier violence conviction', path: 'record.priorViolence', more: 'earlier violence' },
+    { key: 'priorSentencing', group: 'record', label: 'Earlier sentencing dates', phrase: 'the number of earlier sentencing dates', path: 'record.priorSentencingDates', more: 'more earlier sentences' },
+    { key: 'score', group: 'record', label: 'The formula’s total score', phrase: 'the formula’s total score', derived: 'score', more: 'a higher score' }
+  ]
+};
+
+/* =====================================================================
+   Plain-language content for the intro and debrief.
+   ===================================================================== */
+const CONTENT = {
+  introLede: 'You’ve just joined a {{release-board|release board}}. For each of four people, you’ll read their file and estimate: <em>out of 100 people with a file like this, how many would be {{reconvicted|re-convicted}} of a new crime within 5 years of release?</em>',
+  introSteps: [
+    ['Read the file.', 'An interview, the person’s home life, background, hard experiences, and a short clinic note.'],
+    ['Make two estimates.', 'Lock in your first impression. Then see a summary of the person’s criminal record and make a final estimate.'],
+    ['See the outcome.', 'Find out how people with this profile actually did, and how a simple scoring {{formula|formula}} did.']
+  ],
+  introNotes: [
+    'All four people are {{composite|fictional composites}}: made-up people built from patterns found in published research. No real person, name, or record is used, and the outcomes are {{illustrative|illustrative}}.',
+    'Outcomes are about groups. You’ll always see them as “out of 100 people with this profile,” never as what one person did.',
+    'The files mention crime, addiction, hard childhoods, and the death of loved ones, all without graphic detail.',
+    'Words with a dotted underline and a small “?” have a plain-language explanation. Tap, click, or press Enter on them. Try it: {{probability|probability}}.',
+    'Works with a mouse, a touch screen, or a keyboard.'
+  ],
+  footer: 'An educational project for a psychology course on psychology and criminal behavior. Every case is a fictional composite. The “Record Score” is a simplified teaching model inspired by the {{static99r|Static-99R}}, a real risk checklist. It is not the real tool and must never be used to make decisions about real people.',
+
+  /* "What the research says". Every claim here was checked against the five
+     sources listed in references.txt (no in-game citations, by design).
+     Each entry is [heading, paragraph] or [heading, [paragraph, paragraph, ...]].
+     Source behind each section, for editors:
+       1 = Dawes, Faust & Meehl (1989); Grove et al. (2000)
+       2 = Dawes et al. (1989); Grove et al. (2000)
+       3 = Hanson & Thornton (2000); Singh, Grann & Fazel (2011)
+       4 = Portnoy & Farrington (2015)
+       5 = Singh et al. (2011) (median PPV for Static-99, "high" vs. the rest); Dawes et al. (1989) */
+  research: [
+    ['An old question with a steady answer', [
+      'For decades, psychologists have compared two ways of predicting what people will do. Psychologist Paul Meehl laid out the question in a famous 1954 book. In {{clinical-judgment|clinical judgment}}, an expert weighs the information in their head and makes a call. In {{actuarial|actuarial}} prediction, a fixed formula combines a few facts the same way every time. In this game, your estimates were clinical judgments, and the Record Score was an actuarial formula.',
+      'A well-known 1989 review in the journal <em>Science</em> looked at nearly 100 fair comparisons. The formula did as well as the experts, or better, in almost every one. A larger 2000 {{meta-analysis|meta-analysis}} pooled 136 studies of predictions about health, school, money, and crime. The formula was clearly more accurate in 63 studies, about tied in 65, and clearly less accurate in only 8. On average, formulas were about 10% more accurate.'
+    ]],
+    ['Why gut feeling falls short', [
+      'A formula always gives the same answer for the same facts. People don’t. Experts who judged the same cases a second time often changed their minds, because things like tiredness and the order of information sway us. We also have trouble telling which clues really matter, and we sometimes see links that aren’t there.',
+      'Once we form a belief, we tend to notice what fits it and give less weight to what doesn’t. We rarely find out whether our predictions came true, so mistakes go uncorrected. Vivid, dramatic cases stick in memory, so we remember the times our gut was right and forget the misses. That makes us feel surer than our accuracy deserves. More training and experience did not close the gap. Even experts who were shown the formula’s answer, and allowed to overrule it, did worse than if they had simply followed it.',
+      'Interviews didn’t help either. In the 136-study review from 2000, the formula’s lead was <strong>bigger</strong> in studies where experts had interviewed the person. And one {{parole|parole}} study described in the 1989 review found that judgments based on interviews had almost no power to predict how people would do.'
+    ]],
+    ['What tools like the Static-99R do, and don’t do', [
+      'The {{static99r|Static-99R}} grew out of the Static-99, a 10-item checklist described in a 2000 study of about 1,300 men convicted of sexual offenses in Canada and the United Kingdom. Its items are {{static-factor|static}} facts like age, earlier offenses, earlier sentencing dates, and past violence. It worked better than chance, but it was far from perfect. If you picked one man who was later caught for a new sexual offense and one who was not, the first man had the higher score about 7 times out of 10. That was still clearly better than unaided expert judgment had done in earlier research.',
+      'The authors were also plain about its limits. It can’t measure change, show whether treatment helped, or say when someone might reoffend. And its “low” and “high” labels are not fixed standards.',
+      'A 2011 review of 68 studies, covering nearly 26,000 people in 13 countries, compared nine common {{risk-tool|risk assessment tools}}, including the Static-99. Their accuracy was modest to fairly good, and it varied a lot from tool to tool. Tools did best with people like the ones they were built for. Tools where trained experts work through a structured checklist did about as well as pure formulas. So the lesson isn’t “never trust people.” It’s that structure helps: the same facts, checked the same way, every time.'
+    ]],
+    ['Where the body fits in', [
+      '{{psychophysiology|Psychophysiology}} looks for links between body signals and behavior. A 2015 meta-analysis combined 114 reports. It found that people with a lower {{resting-hr|resting heart rate}} show somewhat more {{antisocial|antisocial behavior}}, on average. The link showed up again and again: for males and females, at different ages, and in studies that measured heart rate first and followed people over time.',
+      'But the link is small. People who show more antisocial behavior and people who show less have heart rates that overlap a great deal. That makes heart rate useful for understanding behavior in research, but close to useless for judging any one person. It is not part of tools like the Static-99R. In this game’s cases, heart rate had only a weak link with outcomes, on purpose.'
+    ]],
+    ['Probabilities describe groups, not people', [
+      'A risk estimate of 30% means this: among many people with similar records, about 30 out of 100 were re-convicted and about 70 were not. It can’t say which group one particular person will end up in. Even a “high risk” label is far from certain. In the 2011 review’s typical study, only about 1 in 3 people the Static-99 placed in its high-risk group were recorded as reoffending.',
+      'That’s why this game always said “out of 100 people with this profile,” and never whether a person did or didn’t reoffend. Group odds still matter for a one-time decision, the way a weather forecast matters when you decide on an umbrella. But they are odds, not a verdict about one person.'
+    ]]
+  ],
+  care: [
+    'These aren’t puzzle questions. Release boards, judges, and mental health experts make decisions about real people’s freedom based on predictions of {{recidivism|recidivism}}. Risk tools now help shape decisions about parole, {{probation|probation}}, how long someone is supervised, and who is held in a hospital or prison.',
+    'When decision-makers trust a moving story over the evidence, two kinds of mistakes grow. People who pose little risk can stay locked up longer than they need to. And people at higher risk can leave without the support or supervision that could help them and protect others.',
+    'So knowing what actually predicts outcomes, and what only <em>feels</em> like it does, matters for both accuracy and fairness. It can make these decisions more accurate and more consistent. It also helps all of us ask sharper questions about the tools themselves, including whether they are fair.'
+  ],
+  limits: [
+    ['Tools are imperfect.', 'They sort groups better than chance, but often only modestly. Many people placed in a “high risk” group are not re-convicted ({{false-positive|false positives}}), and some people in “low risk” groups are.'],
+    ['The numbers shift with place and time.', 'The same score can go with different rates in different prisons, countries, or time periods. Official records also miss crimes that are never reported. Tools need to be re-checked on the groups they are used with, so their percentages stay accurate. This is called {{calibration|calibration}}.'],
+    ['Group numbers can’t settle one person’s case.', 'A percentage describes people like this person, not this person’s future. It can’t see the person’s own plans, efforts, or circumstances.'],
+    ['Fairness concerns.', 'Critics point out that record-based tools can carry forward unfairness in who gets arrested, charged, and convicted. If some neighborhoods are policed more heavily, people there can build longer records for the same behavior. Tools are also built and tested mostly on certain groups. The 2011 review found hints that some tools worked better in study groups that were mostly White, and its authors urged caution when tools are used on people unlike those they were built for. Supporters reply that written rules can at least be checked for bias, while private gut feelings can hold the same biases where no one can see them. Both points deserve attention.'],
+    ['A record can’t show change.', 'Static facts can’t capture treatment, sobriety, a new job, or family support. The Static-99’s own authors said it can’t measure change or show whether treatment helped. That’s one reason many real assessments also look at {{dynamic-factor|dynamic factors}}.'],
+    ['Real decisions involve far more than a number.', 'Release boards also weigh the law, victims’ views, supervision plans, housing, treatment, and the person’s own plans. A risk estimate is one input, not the decision.']
+  ],
+  about: [
+    'All four people are fictional composites. Their stories were written for this game, their outcomes are illustrative, and none of them is a real person or record.',
+    'The cases were built on purpose to illustrate the research above. Behind the scenes, each file was given a rating for how much remorse the person showed, how fully they admitted the offense, and how upset they seemed. The four cases form a simple grid: two tearful people who admit what they did, one with a high rate and one with a low rate, and two cool people who deny it, again one high and one low. So across the four, those ratings have no link to the outcomes. Each record fact has a moderate or strong link, and added together in the formula’s score they have a strong one. Resting heart rate has only a weak link. The bars in “What you leaned on” are calculated from the case data as you play, so what they show is true of these cases. But four cases can’t prove anything by themselves. The findings this game is based on come from studies of thousands of real people.',
+    'The formula lands close to every outcome here because each outcome was set near the formula’s number on purpose, so the idea is easy to see. In real use the match is looser, for the reasons listed under “Limits and fairness.”',
+    'The research section above summarizes five {{peer-reviewed|peer-reviewed}} journal articles published between 1989 and 2015. Their full references are on the reference page that comes with this game.',
+    'The “Record Score” is a simplified teaching model inspired by the {{static99r|Static-99R}}. It uses five record facts in the spirit of the real tool, rewritten for any kind of new conviction, and leaves out the real tool’s items about sexual offenses. Its lookup table is {{illustrative|illustrative}}. Most of its values follow published 5-year rates of new violent convictions (including sexual ones) for Static-99 scores of 0 to 6. Rates for <em>any</em> new conviction would be at least that high, and usually higher. It is not the real Static-99R, and it must never be used to make decisions about real people.'
+  ]
+};
+
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* Turn {{key|text}} into glossary buttons. Allows a tiny set of safe inline tags (<em>, <strong>, <b>). */
+function rich(text) {
+  let html = esc(text)
+    .replace(/&lt;(\/?)(em|strong|b)&gt;/g, '<$1$2>');
+  html = html.replace(/\{\{([a-z0-9-]+)\|([^}]+)\}\}/g, (m, key, label) => termButton(key, label));
+  return html;
+}
+function termButton(key, label) {
+  if (!GAME_DATA.glossary[key]) { console.warn('Missing glossary term:', key); return label; }
+  return `<button type="button" class="term" data-term="${key}" aria-expanded="false">${label}<span class="term-q" aria-hidden="true">?</span><span class="sr-only"> (what’s this?)</span></button>`;
+}
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj); }
+function mean(xs) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; }
+function pearson(xs, ys) {
+  const n = xs.length; if (n < 3) return null;
+  const mx = mean(xs), my = mean(ys);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  if (sxx === 0 || syy === 0) return null;
+  return sxy / Math.sqrt(sxx * syy);
+}
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function announce(msg) { const el = $('#sr-status'); el.textContent = ''; window.setTimeout(() => { el.textContent = msg; }, 60); }
+/* Scroll so `el` sits just below the sticky top bar. Measured after layout settles, so
+   content that just changed size above it (e.g. the worksheet un-sticking) can't throw it off. */
+function scrollToEl(el) {
+  if (!el) return;
+  const bar = $('.topbar').getBoundingClientRect().height;      // reading layout forces it to be current
+  const y = el.getBoundingClientRect().top + window.scrollY - bar - 16;
+  window.scrollTo({ top: Math.max(0, y), behavior: reducedMotion() ? 'auto' : 'smooth' });
+}
+/* Apply a CSS change on the next style pass so transitions animate (no requestAnimationFrame needed). */
+function afterPaint(fn) { void document.body.offsetWidth; window.setTimeout(fn, 20); }
+function focusHeading(el, scrollTarget) {
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  scrollToEl(scrollTarget || el);
+}
+function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+function round1(x) { return Math.round(x * 10) / 10; }
+function fmtErr(x) { return x == null ? '–' : (Math.round(x) === round1(x) ? String(Math.round(x)) : round1(x).toFixed(1)); }
+
+/* =====================================================================
+   Scoring model
+   ===================================================================== */
+function itemPoints(item, record) {
+  const v = record[item.field];
+  if (item.type === 'bands') { const b = item.bands.find(b => v >= b.min && v <= b.max); return b ? b.points : 0; }
+  return v ? item.ifYes : item.ifNo;
+}
+function itemValueText(item, record) {
+  const v = record[item.field];
+  if (item.type === 'bool') return v ? 'Yes' : 'No';
+  return String(v);
+}
+function recordScore(record) { return GAME_DATA.model.items.reduce((s, it) => s + itemPoints(it, record), 0); }
+function formulaPercent(score) {
+  const t = GAME_DATA.model.table;
+  if (score <= t[0].score) return t[0].percent;
+  if (score >= t[t.length - 1].score) return t[t.length - 1].percent;
+  const row = t.find(r => r.score === score);
+  return row ? row.percent : null;
+}
+function caseById(id) { return GAME_DATA.cases.find(c => c.id === id); }
+function factorValue(f, c) {
+  if (f.derived === 'score') return recordScore(c.record);
+  let v = getPath(c, f.path);
+  if (typeof v === 'boolean') v = v ? 1 : 0;
+  if (f.invert) v = 1 - v;
+  return v;
+}
+
+/* Data self-check: prints the correlations promised in the comments. Open the page with #debug. */
+function checkData() {
+  const cs = GAME_DATA.cases, out = cs.map(c => c.outcome);
+  const rows = GAME_DATA.analysisFactors.map(f => ({ factor: f.key, r_with_outcome: round1(pearson(cs.map(c => factorValue(f, c)), out) * 100) / 100 }));
+  const mae = mean(cs.map(c => Math.abs(formulaPercent(recordScore(c.record)) - c.outcome)));
+  console.table(rows); console.info('Formula average error:', mae.toFixed(2));
+  cs.forEach(c => console.info(c.id, 'score', recordScore(c.record), 'formula', formulaPercent(recordScore(c.record)), 'outcome', c.outcome));
+}
+
+/* =====================================================================
+   State
+   ===================================================================== */
+const state = {
+  order: [],        // case ids in play order
+  index: 0,         // current case position
+  first: null,      // current first-impression value (null = not set)
+  final: null,      // current final value
+  stage: 'file',    // 'file' | 'record' | 'reveal'
+  results: [],      // { id, first, final, formula, outcome, score }
+  plays: 0,
+  leanView: 'first'
+};
+
+/* =====================================================================
+   Glossary toggletip
+   ===================================================================== */
+const tip = { el: null, openBtn: null };
+function openTerm(btn) {
+  const key = btn.dataset.term; const entry = GAME_DATA.glossary[key]; if (!entry) return;
+  if (tip.openBtn === btn) { closeTerm(true); return; }
+  closeTerm(false);
+  tip.openBtn = btn;
+  $('#termtip-title').textContent = entry[0];
+  $('#termtip-body').textContent = entry[1];
+  tip.el.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+  positionTip();
+  const live = $('#sr-term'); live.textContent = ''; window.setTimeout(() => { live.textContent = `${entry[0]}: ${entry[1]}`; }, 60);
+}
+function positionTip() {
+  if (!tip.openBtn || tip.el.hidden) return;
+  if (window.innerWidth <= 640) { tip.el.style.left = ''; tip.el.style.top = ''; return; }
+  const r = tip.openBtn.getBoundingClientRect();
+  const w = tip.el.offsetWidth, h = tip.el.offsetHeight;
+  let left = r.left + window.scrollX;
+  left = Math.max(16 + window.scrollX, Math.min(left, window.scrollX + document.documentElement.clientWidth - w - 16));
+  let top = r.bottom + window.scrollY + 8;
+  if (r.bottom + h + 16 > window.innerHeight && r.top - h - 8 > 0) top = r.top + window.scrollY - h - 8;
+  tip.el.style.left = left + 'px';
+  tip.el.style.top = top + 'px';
+}
+function closeTerm(returnFocus) {
+  if (!tip.openBtn) return;
+  const btn = tip.openBtn;
+  btn.setAttribute('aria-expanded', 'false');
+  tip.el.hidden = true; tip.openBtn = null;
+  if (returnFocus) btn.focus();
+}
+function initGlossary() {
+  tip.el = $('#termtip');
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.term');
+    if (btn) { e.preventDefault(); openTerm(btn); return; }
+    if (tip.openBtn && !e.target.closest('#termtip')) closeTerm(false);
+  });
+  $('#termtip-close').addEventListener('click', () => closeTerm(true));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && tip.openBtn) { e.preventDefault(); closeTerm(true); } });
+  document.addEventListener('focusin', e => {
+    if (tip.openBtn && e.target !== tip.openBtn && !e.target.closest('#termtip')) closeTerm(false);
+  });
+  window.addEventListener('resize', positionTip);
+  window.addEventListener('scroll', () => { if (tip.openBtn && window.innerWidth > 640) positionTip(); }, { passive: true });
+  $('#worksheet').addEventListener('scroll', () => positionTip(), { passive: true });
+}
+
+/* =====================================================================
+   Screens + top bar
+   ===================================================================== */
+/* Keep sticky offsets and scroll padding in step with the top bar's real height (it wraps
+   to more rows on narrow screens). Written to --bar-h, which the bar itself never reads,
+   so measuring can't feed back into the bar's own size. */
+function syncBarHeight() {
+  document.documentElement.style.setProperty('--bar-h', $('.topbar').offsetHeight + 'px');
+}
+function showScreen(name) {
+  closeTerm(false);
+  ['intro', 'case', 'debrief'].forEach(n => { $('#screen-' + n).hidden = n !== name; });
+  const inGame = name !== 'intro';
+  $('#progress').hidden = name !== 'case';
+  $('#scoreboard').hidden = !inGame;
+  $('#game-h1').hidden = !inGame;   // the intro has its own visible h1
+  syncBarHeight();
+}
+function updateTopbar() {
+  const n = state.order.length, i = state.index;
+  $('#progress-text').textContent = `Case ${i + 1} of ${n}`;
+  $('#pips').innerHTML = state.order.map((_, k) => `<span class="pip ${k < i ? 'done' : k === i ? 'now' : ''}"></span>`).join('');
+  updateScoreboard();
+}
+function avgErrors(results) {
+  if (!results.length) return { first: null, final: null, formula: null };
+  return {
+    first: mean(results.map(r => Math.abs(r.first - r.outcome))),
+    final: mean(results.map(r => Math.abs(r.final - r.outcome))),
+    formula: mean(results.map(r => Math.abs(r.formula - r.outcome)))
+  };
+}
+function updateScoreboard() {
+  const e = avgErrors(state.results);
+  $('#sb-first').textContent = fmtErr(e.first);
+  $('#sb-final').textContent = fmtErr(e.final);
+  $('#sb-formula').textContent = fmtErr(e.formula);
+  // Written once, so an open "What's this?" on it isn't destroyed by a later update
+  if (!$('#sb-note').innerHTML) $('#sb-note').innerHTML = `average ${termButton('points-off', 'points off')} so far · lower is better`;
+  $('#scoreboard').setAttribute('aria-label', state.results.length
+    ? `You versus the formula after ${plural(state.results.length, 'case', 'cases')}. Average points off: your first impressions ${fmtErr(e.first)}, your final estimates ${fmtErr(e.final)}, the formula ${fmtErr(e.formula)}. Lower is better.`
+    : 'You versus the formula. No cases scored yet.');
+  $('#scoreboard').setAttribute('role', 'group');
+  syncBarHeight();
+}
+
+/* =====================================================================
+   Intro
+   ===================================================================== */
+function renderIntro() {
+  $('#intro-lede').innerHTML = rich(CONTENT.introLede);
+  $('#intro-steps').innerHTML = CONTENT.introSteps.map(([a, b]) => `<li><strong>${rich(a)}</strong>${rich(b)}</li>`).join('');
+  $('#intro-notes').innerHTML = CONTENT.introNotes.map(t => `<li>${rich(t)}</li>`).join('');
+  $('#footer-text').innerHTML = rich(CONTENT.footer);
+  $('#intro-fine').innerHTML = rich('About 6–8 minutes · all four cases are {{composite|fictional composites}}');
+}
+
+/* =====================================================================
+   Case screen
+   ===================================================================== */
+function startGame(reshuffle) {
+  const ids = GAME_DATA.cases.map(c => c.id);
+  state.order = reshuffle ? shuffle(ids) : ids;
+  state.index = 0; state.results = []; state.plays += 1; state.leanView = 'first';
+  showScreen('case');
+  renderCase();
+}
+
+function renderCase() {
+  const c = caseById(state.order[state.index]);
+  state.first = null; state.final = null; state.stage = 'file';
+  updateTopbar();
+  document.title = `Case ${state.index + 1} of ${state.order.length} · The Release Board`;
+  $('#case-eyebrow').textContent = `Case ${state.index + 1} of ${state.order.length}`;
+  $('#case-title').textContent = `Case file: ${c.label}`;
+  $('#case-meta').innerHTML = `<b>${esc(c.gender)}</b> · Current offense: ${esc(c.offense)}`;
+  $('#folder').setAttribute('data-tab', 'Stage A · The file');
+
+  const f = c.file;
+  const isFirst = state.index === 0 && state.plays === 1;
+  $('#dossier').innerHTML = `
+    <div class="stage-label">
+      <h3 id="file-title">Stage A · The file</h3>
+      <p>${isFirst ? 'What the board sees first: what the person says, how they come across, and their story. Exact age and record come later.' : 'Interview, life story, and clinic note.'}</p>
+    </div>
+    <section class="sheet" aria-labelledby="h-int">
+      <span class="clip" aria-hidden="true"></span>
+      <h4 id="h-int">Interview excerpt</h4>
+      <dl class="dialogue">
+        ${f.interview.map(([who, text]) => `<div class="line ${who === 'Board' ? 'board' : 'person'}"><dt>${who === 'Board' ? 'Board member' : esc(who)}</dt><dd>${who === 'Board' ? '' : '“'}${esc(text)}${who === 'Board' ? '' : '”'}</dd></div>`).join('')}
+      </dl>
+      <p class="manner"><b>Board member’s note</b>${esc(f.manner)}</p>
+    </section>
+    <section class="sheet" aria-labelledby="h-home">
+      <h4 id="h-home">Home life and relationships</h4>
+      <p>${esc(f.home)}</p>
+    </section>
+    <section class="sheet" aria-labelledby="h-bg">
+      <h4 id="h-bg">Background and childhood</h4>
+      <p>${esc(f.background)}</p>
+    </section>
+    <section class="sheet" aria-labelledby="h-tr">
+      <h4 id="h-tr">Hard experiences (trauma history)</h4>
+      <p>${esc(f.trauma)}</p>
+    </section>
+    <section class="sheet" aria-labelledby="h-lab">
+      <h4 id="h-lab">Clinic note</h4>
+      <div class="lab">
+        <p class="lab-reading">${f.clinic.restingHR}<small>beats/min</small></p>
+        <p><svg class="heart" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="#9a1f24" d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 4.4 2.5.8-1.4 2.3-2.5 4.4-2.5 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>${termButton('resting-hr', 'Resting heart rate')}, measured while sitting quietly before the interview. The typical adult range is about 60 to 100 beats per minute.</p>
+      </div>
+    </section>`;
+
+  $('#worksheet').classList.remove('unstuck');
+  $('#worksheet').innerHTML = `
+    <h3 id="ws-title">Your worksheet</h3>
+    <p class="question">Out of 100 people with a file like this, how many do you think would be ${termButton('reconvicted', 're-convicted')} within 5 years of release?</p>
+    <div class="step" id="step-1">
+      <h4 class="step-title">Step 1 · First impression</h4>
+      <div id="first-slot">${sliderHTML('first', 'Your first impression', null)}</div>
+      <div class="ws-actions" id="first-actions">
+        <button class="btn primary" type="button" id="lock-btn" aria-disabled="true" aria-describedby="lock-hint">Lock in first impression</button>
+      </div>
+      <p class="hint" id="lock-hint">Set the slider first. You can’t change this number after you lock it in.</p>
+    </div>
+    <div class="step" id="step-2" hidden></div>`;
+
+  $('#reveal').hidden = true; $('#reveal').innerHTML = '';
+  bindSlider('first', v => {
+    state.first = v;
+    const lock = $('#lock-btn'); lock.setAttribute('aria-disabled', 'false');
+    const hint = $('#lock-hint'); hint.classList.remove('warn'); hint.textContent = 'You can’t change this number after you lock it in.';
+  });
+  $('#lock-btn').addEventListener('click', lockFirst);
+}
+
+function sliderHTML(id, label, value) {
+  const unset = value == null; const v = unset ? 50 : value;
+  const dots = Array.from({ length: 100 }, (_, i) => `<span class="${!unset && i < v ? 'on' : ''}"></span>`).join('');
+  return `
+  <div class="slider-block ${unset ? 'is-unset' : ''}" id="${id}-block">
+    <div class="slider-top">
+      <label for="${id}-range">${label}</label>
+      <output id="${id}-out" for="${id}-range" class="slider-out" aria-hidden="true">${unset ? '?' : v + '%'}</output>
+    </div>
+    <div class="slider-row">
+      <button type="button" class="step-btn" data-step="-1" aria-label="${label}: lower by 1">−</button>
+      <input type="range" id="${id}-range" min="0" max="100" step="1" value="${v}" style="--val:${unset ? 0 : v}%"
+        aria-valuetext="${unset ? 'Not set yet' : valueText(v)}" aria-describedby="${id}-help">
+      <button type="button" class="step-btn" data-step="1" aria-label="${label}: raise by 1">+</button>
+    </div>
+    <div class="slider-scale" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    <div class="mini-wrap" aria-hidden="true">
+      <div class="mini-dots">${dots}</div>
+      <p class="slider-caption" id="${id}-cap">${unset ? 'Not set yet. Each square is one person out of 100.' : capText(v)}</p>
+    </div>
+    <p class="hint" id="${id}-help">Drag, tap the line, or use the arrow keys (Page Up/Down moves by 10).</p>
+  </div>`;
+}
+function valueText(v) { return `${v} percent: about ${v} out of 100 people`; }
+function capText(v) { return `About <b>${v}</b> out of 100 people re-convicted; ${100 - v} not.`; }
+
+function bindSlider(id, onSet) {
+  const input = $(`#${id}-range`), block = $(`#${id}-block`), out = $(`#${id}-out`), cap = $(`#${id}-cap`);
+  const dots = $$('.mini-dots span', block);
+  let isSet = !block.classList.contains('is-unset');
+  const apply = v => {
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    input.value = v;
+    isSet = true; block.classList.remove('is-unset');
+    input.style.setProperty('--val', v + '%');
+    input.setAttribute('aria-valuetext', valueText(v));
+    out.textContent = v + '%';
+    if (!reducedMotion()) { out.classList.remove('bump'); void out.offsetWidth; out.classList.add('bump'); }
+    cap.innerHTML = capText(v);
+    dots.forEach((d, i) => d.classList.toggle('on', i < v));
+    onSet(v);
+  };
+  input.addEventListener('input', () => apply(+input.value));
+  input.addEventListener('change', () => apply(+input.value));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'PageUp' || e.key === 'PageDown') {
+      e.preventDefault();
+      apply((isSet ? +input.value : 50) + (e.key === 'PageUp' ? 10 : -10));
+    }
+  });
+  /* A tap that didn't move the value (e.g. iOS Safari, which ignores taps on the track,
+     or a click exactly on the starting value) still sets the slider where it was tapped. */
+  let movedThisPress = false;
+  input.addEventListener('pointerdown', () => { movedThisPress = false; });
+  input.addEventListener('input', () => { movedThisPress = true; });
+  input.addEventListener('pointerup', ev => {
+    if (movedThisPress || input.disabled) return;
+    const r = input.getBoundingClientRect(), thumb = 30;
+    const pct = (ev.clientX - r.left - thumb / 2) / (r.width - thumb) * 100;
+    if (!Number.isFinite(pct) || !ev.clientX) { if (!isSet) apply(+input.value); return; }
+    const onThumb = (thumb / 2) / (r.width - thumb) * 100;   // half the thumb's width, in slider points
+    if (isSet && Math.abs(pct - +input.value) <= onThumb) return;   // a plain click on the thumb: leave it alone
+    apply(pct);
+  });
+  $$('.step-btn', block).forEach(b => b.addEventListener('click', () => {
+    const step = +b.dataset.step;
+    apply((isSet ? +input.value : 50) + step);
+  }));
+}
+function disableSlider(id) {
+  const block = $(`#${id}-block`); if (!block) return;
+  $$('input, button', block).forEach(el => { el.disabled = true; });
+}
+
+function lockFirst() {
+  const btn = $('#lock-btn');
+  if (state.first == null) {
+    const hint = $('#lock-hint');
+    hint.textContent = 'Move the slider to pick a number first.'; hint.classList.add('warn');
+    announce('Move the slider to pick a number first.');
+    $('#first-range').focus();
+    return;
+  }
+  const c = caseById(state.order[state.index]);
+  state.stage = 'record';
+  // Replace slider with a locked chip
+  $('#first-slot').innerHTML = `
+    <div class="locked-chip">
+      <span>First impression: <span class="val">${state.first}%</span></span>
+      <span class="stamp ${reducedMotion() ? '' : 'pop'}">Locked</span>
+    </div>`;
+  $('#first-actions').remove(); $('#lock-hint').remove();
+
+  const step2 = $('#step-2');
+  const rows = GAME_DATA.model.items.map(it => {
+    let label = esc(it.label);
+    if (it.field === 'priorSentencingDates') label = `Earlier ${termButton('sentencing-date', 'sentencing dates')} (separate times sentenced before this offense)`;
+    if (it.field === 'livedWithPartner2y') label = 'Has ever lived with a romantic partner for 2 years or more';
+    if (it.field === 'currentViolence') label = 'Did the current offense involve violence?';
+    if (it.field === 'priorViolence') label = 'Any earlier conviction for violence?';
+    return `<tr><th scope="row">${label}</th><td>${esc(itemValueText(it, c.record))}</td></tr>`;
+  }).join('');
+  step2.innerHTML = `
+    <h4 class="step-title" id="step2-title" tabindex="-1">Step 2 · Stage B: the record</h4>
+    <p class="record-intro">The board now gets facts from ${esc(c.label)}’s criminal record. These are ${termButton('static-factor', 'static factors')}: facts about the past that can’t change.</p>
+    <table class="record ${reducedMotion() ? '' : 'slide-in'}">
+      <caption>Record summary · ${esc(c.label)}</caption>
+      <tbody>${rows}</tbody>
+    </table>
+    ${sliderHTML('final', 'Your final estimate', state.first)}
+    <div class="ws-actions">
+      <button class="btn primary" type="button" id="final-btn">Submit final estimate</button>
+    </div>
+    <p class="hint">Keeping your first number is fine too.</p>`;
+  step2.hidden = false;
+  state.final = state.first;
+  bindSlider('final', v => { state.final = v; });
+  $('#final-btn').addEventListener('click', submitFinal);
+  $('#folder').setAttribute('data-tab', 'Stage B · Record added');
+  $('#worksheet').classList.add('unstuck');
+  announce(`First impression locked at ${state.first} percent. The record is now shown below it.`);
+  focusHeading($('#step2-title'));
+}
+
+function submitFinal() {
+  const c = caseById(state.order[state.index]);
+  const score = recordScore(c.record);
+  const formula = formulaPercent(score);
+  state.stage = 'reveal';
+  state.results.push({ id: c.id, first: state.first, final: state.final, formula, outcome: c.outcome, score });
+  disableSlider('final');
+  const fb = $('#final-btn'); fb.disabled = true; fb.textContent = 'Final estimate submitted'; fb.classList.remove('primary');
+  updateScoreboard();
+  renderReveal(c, score, formula);
+}
+
+function renderReveal(c, score, formula) {
+  const r = state.results[state.results.length - 1];
+  const errs = { first: Math.abs(r.first - c.outcome), final: Math.abs(r.final - c.outcome), formula: Math.abs(formula - c.outcome) };
+  const best = Math.min(errs.first, errs.final, errs.formula);
+  const off = e => e === 0 ? 'right on' : `${plural(e, 'point', 'points')} off`;
+  const circles = Array.from({ length: 100 }, (_, i) => {
+    const x = 11 + (i % 10) * 22, y = 11 + Math.floor(i / 10) * 22;
+    return `<circle cx="${x}" cy="${y}" r="8.5" style="--i:${i}"></circle>`;
+  }).join('');
+  const row = (cls, name, val, err) => `
+    <div class="scale-row">
+      <span class="scale-name">${name}</span>
+      <div class="scale-track"><div class="scale-inner">
+        <span class="scale-outcome" style="left:${c.outcome}%"></span>
+        <span class="scale-mark ${cls}" style="left:${val}%"></span>
+      </div></div>
+      <span class="scale-val ${err === best ? 'best' : ''}"><b>${val}</b><span>${off(err)}${err === best ? ' · closest' : ''}</span></span>
+    </div>`;
+  const items = GAME_DATA.model.items.map(it => {
+    const p = itemPoints(it, c.record);
+    return `<tr><th scope="row">${esc(it.label)}</th><td>${esc(itemValueText(it, c.record))}</td><td class="num">${p > 0 ? '+' + p : p === 0 ? '0' : '−' + Math.abs(p)}</td></tr>`;
+  }).join('');
+  const last = state.index === state.order.length - 1;
+
+  const el = $('#reveal');
+  el.innerHTML = `
+    <p class="eyebrow">Step 3 · The outcome</p>
+    <h3 id="reveal-title" tabindex="-1">How people with this profile did</h3>
+    <div class="reveal-grid">
+      <div>
+        <p class="big-stat">Out of 100 people with this profile, about <strong>${c.outcome}</strong> were re-convicted within 5 years.</p>
+        <svg class="dots ${reducedMotion() ? '' : 'animate'}" id="dots" viewBox="0 0 220 220" role="img" aria-label="Picture of 100 people: ${c.outcome} filled in for re-convicted, ${100 - c.outcome} empty for not re-convicted.">${circles}</svg>
+        <ul class="legend">
+          <li><span class="key filled" aria-hidden="true"></span> Re-convicted within 5 years</li>
+          <li><span class="key" aria-hidden="true"></span> Not re-convicted</li>
+        </ul>
+        <p class="fine">This is the ${termButton('base-rate', 'base rate')} for a group of similar people. It is an ${termButton('illustrative', 'illustrative')} figure for a fictional composite, and it does not say what any one person did or will do.</p>
+      </div>
+      <div class="compare">
+        <h4>How close was each estimate?</h4>
+        <div class="scale">
+          ${row('first', 'Your first impression', r.first, errs.first)}
+          ${row('final', 'Your final estimate', r.final, errs.final)}
+          ${row('formula', 'The formula', formula, errs.formula)}
+          <div class="scale-axis" aria-hidden="true"><span></span><div class="axis"><span style="left:0%">0</span><span style="left:25%">25</span><span style="left:50%">50</span><span style="left:75%">75</span><span style="left:100%">100</span></div><span></span></div>
+        </div>
+        <p class="axis-note">The dashed line marks the outcome (${c.outcome}). Circles are your estimates; the diamond is the formula.</p>
+        <h4>How the ${termButton('formula', 'formula')} scored the record</h4>
+        <table class="breakdown">
+          <thead><tr><th scope="col">Record item</th><th scope="col">${esc(c.label)}</th><th scope="col" class="num">Points</th></tr></thead>
+          <tbody>${items}</tbody>
+          <tfoot><tr><th scope="row" colspan="2">Total Record Score</th><td class="num">${score}</td></tr></tfoot>
+        </table>
+        <p class="lookup-line">A score of ${score} matches about <b>${formula} out of 100</b> in the ${termButton('lookup-table', 'lookup table')}. <span class="tag">Illustrative</span></p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <h4>What mattered here</h4>
+      <p>${rich(c.takeaway)}</p>
+    </div>
+    <div class="reveal-actions">
+      <button class="btn primary" type="button" id="next-btn">${last ? 'See your board report' : 'Next case'} <span class="arrow" aria-hidden="true">→</span></button>
+    </div>`;
+  el.hidden = false;
+  if (!reducedMotion()) el.classList.add('slide-in-sheet');
+  // Fill the dots (animated unless reduced motion)
+  const fill = () => $$('#dots circle').forEach((ci, i) => { if (i < c.outcome) ci.classList.add('on'); });
+  if (reducedMotion()) fill(); else afterPaint(fill);
+  $('#next-btn').addEventListener('click', nextCase);
+  announce(`Outcome: out of 100 people with this profile, about ${c.outcome} were re-convicted within 5 years. Your final estimate was ${off(errs.final)}. The formula was ${off(errs.formula)}.`);
+  focusHeading($('#reveal-title'), el);
+}
+
+function nextCase() {
+  if (state.index < state.order.length - 1) {
+    state.index += 1;
+    renderCase();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    $('#case-title').focus({ preventScroll: true });
+    announce(`Case ${state.index + 1} of ${state.order.length}.`);
+  } else {
+    renderDebrief();
+  }
+}
+
+/* =====================================================================
+   Debrief
+   ===================================================================== */
+function strengthWord(r) {
+  if (r == null) return 'can’t tell';
+  const a = Math.abs(r);
+  return a < 0.1 ? 'no link' : a < 0.3 ? 'weak' : a < 0.5 ? 'moderate' : 'strong';
+}
+function directionText(f, r, subject) {
+  if (r == null) return 'your estimates didn’t vary';
+  if (Math.abs(r) < 0.1) return 'no real pattern';
+  return `${f.more} → ${r > 0 ? 'higher' : 'lower'} ${subject}`;
+}
+
+function computeLean(view) {
+  const res = state.results;
+  const cs = res.map(r => caseById(r.id));
+  const est = res.map(r => r[view]);
+  const out = cs.map(c => c.outcome);
+  return GAME_DATA.analysisFactors.map(f => {
+    const vals = cs.map(c => factorValue(f, c));
+    return { f, you: pearson(vals, est), actual: pearson(vals, out) };
+  });
+}
+
+/* A row is a "mismatch" when the player's estimates followed a factor that had no real
+   link to outcomes, and "overlooked" when a record fact with a strong link was barely used
+   in the final estimates (record facts were hidden at first impression, so only there). */
+function leanFlags(x, view) {
+  const mismatch = x.you != null && Math.abs(x.you) >= 0.3 && x.actual != null && Math.abs(x.actual) < 0.1;
+  const overlooked = view === 'final' && x.f.group === 'record' && x.f.key !== 'score' && x.actual != null && Math.abs(x.actual) >= 0.5 && (x.you == null || Math.abs(x.you) < 0.2);
+  return { mismatch, overlooked };
+}
+function listText(items) { return items.length > 1 ? items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1] : items[0]; }
+function linkClause(r) {
+  const s = strengthWord(r);
+  return s === 'no link' ? 'it had <strong>no real link</strong> to the outcomes' : `its link to the outcomes was <strong>${s}</strong>`;
+}
+function ptsText(x) { return fmtErr(x) === '1' ? '1 point' : `${fmtErr(x)} points`; }
+
+function leanRowsHTML(view) {
+  const rows = computeLean(view);
+  const bar = (who, cls, f, r, subject) => {
+    const w = r == null ? 0 : Math.round(Math.abs(r) * 100);
+    return `<div class="bar ${cls}">
+      <span class="bar-who">${who}</span>
+      <span class="bar-track" aria-hidden="true"><span class="bar-fill" data-w="${w}"></span></span>
+      <span class="bar-text"><b>${r == null ? '–' : Math.abs(r).toFixed(2)}</b> ${strengthWord(r)}${r != null && Math.abs(r) >= 0.1 ? ' · ' + esc(directionText(f, r, subject)) : ''}</span>
+    </div>`;
+  };
+  const group = (g, title) => `
+    <div class="lean-group">
+      <h4>${title}</h4>
+      ${rows.filter(x => x.f.group === g).map(x => {
+        const { mismatch, overlooked } = leanFlags(x, view);
+        const tag = mismatch
+          ? '<span class="flag-tag" aria-hidden="true">Mismatch</span><span class="sr-only"> (mismatch: you leaned on it, but it had no real link to outcomes)</span>'
+          : overlooked
+            ? '<span class="flag-tag missed" aria-hidden="true">Overlooked</span><span class="sr-only"> (overlooked: it had a strong link to outcomes, but your final estimates barely used it)</span>'
+            : '';
+        return `<div class="lean-row">
+          <span class="lean-name">${esc(x.f.label)}${tag}</span>
+          <div class="bars">
+            ${bar(view === 'first' ? 'You (first)' : 'You (final)', 'you', x.f, x.you, 'estimates')}
+            ${bar('Outcomes', 'out', x.f, x.actual, 'rates')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  return group('file', 'From the file (Stage A)') + group('record', 'From the record (Stage B)');
+}
+
+function leanSummaryHTML(view) {
+  const rows = computeLean(view);
+  const which = view === 'first' ? 'first impressions' : 'final estimates';
+  const fileRows = rows.filter(x => x.f.group === 'file' && x.you != null).sort((a, b) => Math.abs(b.you) - Math.abs(a.you));
+  if (!rows.some(x => x.you != null)) return `<p>Your ${which} were the same for every case, so there is no pattern to measure.</p>`;
+  const parts = [];
+  // Factors with identical patterns across the cases (common with only a few cases) tie exactly; name them all.
+  const tiedWith = (arr, ref, key) => arr.filter(x => Math.abs(Math.abs(x[key]) - Math.abs(ref[key])) < 0.005);
+  if (fileRows.length && Math.abs(fileRows[0].you) >= 0.3) {
+    const t = fileRows[0];
+    const tops = tiedWith(fileRows, t, 'you');
+    parts.push(`<p>Of the things in the file, your ${which} followed <strong>${listText(tops.map(x => esc(x.f.phrase)))}</strong> most closely (${strengthWord(t.you)}: ${esc(directionText(t.f, t.you, 'estimates'))}). In these cases, ${tops.length > 1 ? (strengthWord(t.actual) === 'no link' ? 'they had <strong>no real link</strong> to the outcomes' : `their link to the outcomes was <strong>${strengthWord(t.actual)}</strong>`) : linkClause(t.actual)} (${t.actual == null ? '–' : Math.abs(t.actual).toFixed(2)}).</p>`);
+  } else {
+    parts.push(`<p>Your ${which} didn’t closely follow any single thing in the file.</p>`);
+  }
+  const mism = rows.filter(x => leanFlags(x, view).mismatch);
+  if (mism.length) parts.push(`<p><strong>Mismatch:</strong> you leaned on ${listText(mism.map(x => esc(x.f.phrase)))}, which had no real link to outcomes in these cases.</p>`);
+  const missed = rows.filter(x => leanFlags(x, view).overlooked);
+  if (missed.length) parts.push(`<p><strong>Overlooked:</strong> your final estimates barely used ${listText(missed.map(x => esc(x.f.phrase)))}, which had a strong link to outcomes.</p>`);
+  const ranked = rows.filter(x => x.f.key !== 'score' && x.actual != null).sort((a, b) => Math.abs(b.actual) - Math.abs(a.actual));
+  const topActual = ranked.length > 1 ? ranked.filter(x => Math.abs(x.actual) >= Math.abs(ranked[1].actual) - 0.005) : ranked;
+  const scoreRow = rows.find(x => x.f.key === 'score');
+  parts.push(`<p>The facts most linked to outcomes were <strong>${listText(topActual.map(x => esc(x.f.phrase)))}</strong>.${scoreRow && scoreRow.actual != null ? ` Added together in the formula’s score, the record facts had a ${strengthWord(scoreRow.actual)} link (${scoreRow.actual.toFixed(2)}).` : ''}</p>`);
+  return parts.join('');
+}
+
+function renderLean() {
+  $('#lean-rows').innerHTML = leanRowsHTML(state.leanView);
+  $('#lean-summary').innerHTML = leanSummaryHTML(state.leanView);
+  const fill = () => $$('#lean-rows .bar-fill').forEach(b => { b.style.width = b.dataset.w + '%'; });
+  if (reducedMotion()) fill(); else afterPaint(fill);
+}
+
+function anchoringHTML() {
+  const res = state.results;
+  const moved = mean(res.map(r => Math.abs(r.final - r.first)));
+  const needed = mean(res.map(r => Math.abs(r.outcome - r.first)));
+  const improved = mean(res.map(r => Math.abs(r.first - r.outcome) - Math.abs(r.final - r.outcome)));
+  const towardCount = res.filter(r => Math.abs(r.final - r.outcome) < Math.abs(r.first - r.outcome)).length;
+  const unchanged = res.filter(r => r.final === r.first).length;
+  const closed = needed > 0 ? Math.max(0, Math.min(100, Math.round(improved / needed * 100))) : 100;
+  let msg;
+  if (needed < 4) {
+    msg = `Your first impressions were already close to the outcomes (about ${ptsText(needed)} off on average), so there wasn’t much room to improve.`;
+  } else if (unchanged === res.length) {
+    msg = `You kept your first number in every case, so the record never moved any of your estimates. To land right on the outcomes, you would have needed to move about <strong>${ptsText(needed)}</strong> per case on average.`;
+  } else if (improved <= 0) {
+    msg = `On average, your changes after seeing the record did not bring you closer to the outcomes. Seeing the record and using it are two different things.`;
+  } else {
+    msg = `To land right on the outcomes, you would have needed to move about <strong>${ptsText(needed)}</strong> per case on average. Your revisions closed about <strong>${closed}%</strong> of that gap.`;
+  }
+  return `
+    <div class="anchor-viz">
+      <div class="anchor-stat"><div class="num">${fmtErr(moved)}</div><p>points: how far you moved, on average, after seeing the record</p></div>
+      <div class="anchor-stat"><div class="num">${towardCount} of ${res.length}</div><p>cases where your final estimate ended up closer to the outcome${unchanged ? ` (you kept the same number ${plural(unchanged, 'time', 'times')})` : ''}</p></div>
+    </div>
+    ${needed >= 4 && improved > 0 ? `<div class="gap-bar" role="img" aria-label="You closed about ${closed} percent of the gap between your first impressions and the outcomes."><span style="width:${closed}%"></span></div><p class="fine">Share of the gap you closed by revising</p>` : ''}
+    <p>${msg}</p>
+    <p>Staying close to a first number is called ${termButton('anchoring', 'anchoring')}. It is similar to a habit researchers have found in expert judgment: once we form a belief, we tend to notice what fits it and give less weight to what doesn’t. A formula has no first impression to protect.</p>`;
+}
+
+function renderDebrief() {
+  showScreen('debrief');
+  document.title = 'Board report · The Release Board';
+  const res = state.results;
+  const e = avgErrors(res);
+  const formulaWins = res.filter(r => Math.abs(r.formula - r.outcome) < Math.abs(r.final - r.outcome)).length;
+  const youWins = res.filter(r => Math.abs(r.final - r.outcome) < Math.abs(r.formula - r.outcome)).length;
+  const revise = e.first - e.final;
+  const keptAll = res.every(r => r.final === r.first);
+  const reviseText = keptAll
+    ? 'You kept your first number every time, so your final estimates matched your first impressions.'
+    : Math.abs(revise) < 0.5
+      ? 'Revising after seeing the record made almost no difference to your accuracy.'
+      : revise > 0
+        ? `Seeing the record helped: your final estimates were <strong>${ptsText(revise)} closer</strong> on average than your first impressions.`
+        : `Revising hurt a little: your final estimates were <strong>${ptsText(-revise)} further off</strong> on average than your first impressions.`;
+  const lineup = e.final < e.formula
+    ? `Nice work: your final estimates beat the formula on average${youWins ? ` (you were closer in ${youWins} of ${res.length} cases)` : ''}. With only four cases, luck plays a big part, and formulas win far more often in large studies.`
+    : e.final === e.formula
+      ? 'You tied the formula on average. With only four cases, luck plays a big part, and formulas win far more often in large studies.'
+      : `The formula was closer than your final estimate in <strong>${formulaWins} of ${res.length}</strong> cases.`;
+
+  const caseRows = res.map(r => {
+    const c = caseById(r.id);
+    const cell = v => `${v}<small> (${Math.abs(v - r.outcome)})</small>`;
+    return `<tr><th scope="row">${esc(c.label)} · ${esc(c.offense.split('.')[0])}</th><td>${cell(r.first)}</td><td>${cell(r.final)}</td><td>${cell(r.formula)}</td><td><b>${r.outcome}</b></td></tr>`;
+  }).join('');
+
+  const m = GAME_DATA.model;
+  const modelItems = m.items.map(it => `<li><strong>${esc(it.label)}:</strong> ${it.type === 'bool' ? `Yes = ${fmtPts(it.ifYes)}, No = ${fmtPts(it.ifNo)}` : it.bands.map(b => `${esc(b.text)} = ${fmtPts(b.points)}`).join('; ')}</li>`).join('');
+  const tableRows = m.table.map(r => `<tr><td class="num">${r.score === m.table[0].score ? r.score + ' or less' : r.score === m.table[m.table.length - 1].score ? r.score + ' or more' : r.score}</td><td class="num">${r.percent}</td></tr>`).join('');
+
+  $('#debrief').innerHTML = `
+    <header class="debrief-head">
+      <p class="eyebrow">Board report · all ${res.length} cases</p>
+      <h2 id="debrief-title" tabindex="-1">How did you do?</h2>
+      <p>Each number is the average distance between an estimate and the outcome, in ${termButton('points-off', 'points off')}. Lower is better.</p>
+    </header>
+
+    <div class="tiles">
+      <div class="sheet tile you"><p class="label">Your first impressions</p><p class="num">${fmtErr(e.first)}</p><p class="unit">points off on average</p></div>
+      <div class="sheet tile you"><p class="label">Your final estimates</p><p class="num">${fmtErr(e.final)}</p><p class="unit">points off on average</p></div>
+      <div class="sheet tile formula"><p class="label">The formula</p><p class="num">${fmtErr(e.formula)}</p><p class="unit">points off on average</p></div>
+    </div>
+    <p class="verdict">${lineup} ${reviseText}</p>
+
+    <section class="sheet panel" aria-labelledby="h-cases">
+      <h3 id="h-cases">Case by case</h3>
+      <div class="table-wrap" role="region" aria-label="Case-by-case table, scrolls sideways on small screens" tabindex="0">
+        <table class="cases-table">
+          <caption class="sr-only">Your estimates, the formula, and the outcome for each case. Numbers in parentheses are points off.</caption>
+          <thead><tr><th scope="col">Case</th><th scope="col">Your first</th><th scope="col">Your final</th><th scope="col">Formula</th><th scope="col">Outcome</th></tr></thead>
+          <tbody>${caseRows}</tbody>
+          <tfoot><tr><th scope="row">Average points off</th><td>${fmtErr(e.first)}</td><td>${fmtErr(e.final)}</td><td>${fmtErr(e.formula)}</td><td></td></tr></tfoot>
+        </table>
+      </div>
+      <p class="fine" style="margin-top:10px">Outcome = out of 100 people with that profile, about how many were ${termButton('reconvicted', 're-convicted')} within 5 years (${termButton('illustrative', 'illustrative')}). Numbers in parentheses are points off.</p>
+    </section>
+
+    <section class="sheet panel" aria-labelledby="h-lean">
+      <h3 id="h-lean">What you leaned on</h3>
+      <p class="prose">How closely did your estimates follow each piece of information? And how closely did each one actually go with the outcomes in these four cases? Bars show the strength of the ${termButton('correlation', 'correlation')}: 0 means no link, 1 means a perfect link.</p>
+      <p class="prose">Behind the scenes, each file was given a rating for how much remorse the person showed, how fully they admitted the offense, and how upset they seemed. The bars use those ratings, the heart rate, and the record facts.</p>
+      <fieldset class="seg">
+        <legend>Compare the outcomes with my:</legend>
+        <label><input type="radio" name="leanview" value="first" ${state.leanView === 'first' ? 'checked' : ''}> First impressions</label>
+        <label><input type="radio" name="leanview" value="final" ${state.leanView === 'final' ? 'checked' : ''}> Final estimates</label>
+      </fieldset>
+      <ul class="lean-legend" aria-hidden="true">
+        <li><span class="swatch you"></span> Your estimates</li>
+        <li><span class="swatch out"></span> Outcomes in these four cases</li>
+      </ul>
+      <div id="lean-rows"></div>
+      <div class="callouts" id="lean-summary" aria-live="polite"></div>
+      <p class="fine" style="margin-top:14px">With only 4 cases, these numbers are a very rough illustration: a single case can swing them a lot. Most record facts were hidden when you made your first impressions. The research findings this game is based on come from studies of thousands of real people.</p>
+    </section>
+
+    <section class="sheet panel" aria-labelledby="h-anchor">
+      <h3 id="h-anchor">Did your first impression stick?</h3>
+      ${anchoringHTML()}
+    </section>
+
+    <section class="sheet panel research" aria-labelledby="h-research">
+      <h3 id="h-research">What the research says</h3>
+      ${CONTENT.research.map(([h, p]) => `<h4>${rich(h)}</h4>${[].concat(p).map(x => `<p>${rich(x)}</p>`).join('')}`).join('')}
+    </section>
+
+    <section class="sheet panel care" aria-labelledby="h-care">
+      <h3 id="h-care">Why should we care?</h3>
+      ${CONTENT.care.map(p => `<p>${rich(p)}</p>`).join('')}
+    </section>
+
+    <section class="sheet panel" aria-labelledby="h-limits">
+      <h3 id="h-limits">Limits and fairness</h3>
+      <p class="prose">Formulas beat gut feeling on average, but that doesn’t make them the whole answer.</p>
+      <ul class="limits-list">${CONTENT.limits.map(([h, p]) => `<li><b>${rich(h)}</b>${rich(p)}</li>`).join('')}</ul>
+    </section>
+
+    <section class="sheet panel" aria-labelledby="h-about">
+      <h3 id="h-about">How this game was built</h3>
+      ${CONTENT.about.map(p => `<p class="prose">${rich(p)}</p>`).join('')}
+      <details class="model">
+        <summary>See the full Record Score (teaching model)</summary>
+        <div class="model-body model-cols">
+          <div>
+            <p><strong>Add up the points:</strong></p>
+            <ul>${modelItems}</ul>
+          </div>
+          <div>
+            <table class="breakdown">
+              <caption class="sr-only">Lookup table: Record Score to illustrative 5-year re-conviction rate</caption>
+              <thead><tr><th scope="col" class="num">Score</th><th scope="col" class="num wrap">About how many out of 100 <span class="tag">Illustrative</span></th></tr></thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <div class="again">
+      <button class="btn primary" type="button" id="again-btn">Play again with the cases shuffled <span class="arrow" aria-hidden="true">↻</span></button>
+      <span class="fine">Your scores will reset.</span>
+    </div>`;
+
+  $$('input[name="leanview"]').forEach(inp => inp.addEventListener('change', () => { state.leanView = inp.value; renderLean(); }));
+  $('#again-btn').addEventListener('click', () => { startGame(true); window.scrollTo({ top: 0, behavior: 'auto' }); $('#case-title').focus({ preventScroll: true }); announce('New game started. Case 1.'); });
+  renderLean();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  $('#debrief-title').focus({ preventScroll: true });
+  announce('Board report ready.');
+}
+function fmtPts(p) { return p > 0 ? '+' + p : p === 0 ? '0' : '−' + Math.abs(p); }
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+function init() {
+  renderIntro();
+  initGlossary();
+  syncBarHeight();
+  if (window.ResizeObserver) new ResizeObserver(syncBarHeight).observe($('.topbar'));
+  window.addEventListener('resize', syncBarHeight);
+  $('#start-btn').addEventListener('click', () => {
+    startGame(false);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    $('#case-title').focus({ preventScroll: true });
+    announce(`Case 1 of ${state.order.length}.`);
+  });
+  if (location.hash === '#debug') checkData();
+}
+init();
+</script>
+</body>
+</html>
